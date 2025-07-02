@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import matplotlib.ticker as mticker
 import calendar # Para obter o nome do mês
+import numpy as np # Adicionado para operações numéricas, se necessário
 
 # --- Configuração da Página ---
 st.set_page_config(layout="wide", page_title="Painel Financeiro Granazen-like")
@@ -18,37 +19,6 @@ def apply_custom_css():
         color: #333; /* Cor do texto padrão */
         font-family: "Inter", sans-serif; /* Fonte Inter */
     }
-
-    /* Header/Navegação (REMOVIDO) */
-    /* .header-container {
-        background-color: #28a745; /* Verde do Granazen */
-        padding: 10px 20px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
-    .header-item {
-        color: white;
-        font-weight: bold;
-        padding: 5px 10px;
-        cursor: pointer;
-        border-radius: 5px; /* Arredondar itens do cabeçalho */
-    }
-    .header-item:hover {
-        background-color: #218838;
-    }
-    .header-logo {
-        font-size: 24px;
-        font-weight: bold;
-        color: white;
-    }
-    .header-right {
-        display: flex;
-        gap: 15px;
-    } */
 
     /* Cards de Métricas */
     .metric-card {
@@ -153,15 +123,6 @@ def apply_custom_css():
         border-color: #ccc;
         color: #333;
     }
-    /* Estilo para o botão "Esse mês" selecionado, se o Streamlit mantiver um estado */
-    /* Isso é mais complexo com CSS puro, mas podemos simular um destaque */
-    /* Streamlit não adiciona uma classe 'selected' automaticamente para botões */
-    /* Apenas para demonstração, o estilo abaixo não será ativado por clique */
-    /* .stButton > button[data-testid="stButton-secondary"][aria-pressed="true"] {
-        background-color: #28a745;
-        color: white;
-        border-color: #28a745;
-    } */
 
     /* Estilo para as abas (tabs) */
     .stTabs [data-testid="stTab"] {
@@ -213,23 +174,6 @@ def calculate_metrics(df_filtered, start_date, end_date, prev_month_start, prev_
 
     return total_receitas, total_despesas, saldo_atual, prev_month_saldo
 
-# --- Header/Navegação (REMOVIDO) ---
-# st.markdown("""
-# <div class="header-container">
-#     <div class="header-left">
-#         <span class="header-logo">GranaZen</span>
-#     </div>
-#     <div class="header-right">
-#         <span class="header-item">Visão geral</span>
-#         <span class="header-item">Planeje sua grana</span>
-#         <span class="header-item">Minhas Categorias</span>
-#         <span class="header-item">Configurações</span>
-#         <span class="header-item">Aparência</span>
-#         <span class="header-item">Sair</span>
-#     </div>
-# </div>
-# """, unsafe_allow_html=True)
-
 # --- Título Principal e Subtítulo ---
 st.title("💰 Dashboard de Análise Financeira")
 st.markdown("Este aplicativo simula a perspectiva analítica do Granazen, permitindo que você carregue seus dados financeiros ou insira novos lançamentos manualmente.")
@@ -251,7 +195,7 @@ if 'df' not in st.session_state:
         st.session_state.df = pd.DataFrame(example_data)
         st.session_state.df['Data'] = pd.to_datetime(st.session_state.df['Data']) # Garante que a coluna Data seja datetime
 
-# --- 1. Carregar Dados ou Inserir Manualmente ---
+# --- 1. Gerenciar Lançamentos ---
 st.header("1. Gerenciar Lançamentos")
 
 tab1, tab2 = st.tabs(["Carregar CSV", "Inserir Lançamento Manual"])
@@ -515,11 +459,23 @@ with main_col2:
         else:
             st.info("Nenhuma receita encontrada para gerar o gráfico de pizza neste período.")
 
+    # --- Top Categorias de Despesas ---
+    st.subheader("Top 5 Categorias de Despesas")
+    if not df_despesas_filtered.empty:
+        top_despesas = df_despesas_filtered.groupby('Categoria')['Valor'].sum().nlargest(5)
+        if not top_despesas.empty:
+            for categoria, valor in top_despesas.items():
+                st.markdown(f"- **{categoria}**: R$ {valor:,.2f}")
+        else:
+            st.info("Não há despesas suficientes para listar as top categorias.")
+    else:
+        st.info("Nenhuma despesa para analisar as top categorias.")
+
     st.markdown("</div>", unsafe_allow_html=True) # Fecha content-section para categorias/gráfico
 
 # --- Gráfico de Saldo Acumulado (Mantido, mas fora do layout principal para melhor visualização) ---
 st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-st.subheader("Evolução do Saldo ao Longo do Tempo")
+st.subheader("Evolução do Saldo Acumulado ao Longo do Tempo")
 if not df_filtered.empty:
     fig_saldo, ax_saldo = plt.subplots(figsize=(12, 6))
     ax_saldo.plot(df_filtered['Data'], df_filtered['Saldo_Acumulado'], marker='o', linestyle='-')
@@ -534,13 +490,45 @@ if not df_filtered.empty:
     st.pyplot(fig_saldo)
     plt.close(fig_saldo)
 else:
-    st.info("Nenhum dado disponível para o período selecionado para gerar o gráfico de saldo.")
+    st.info("Nenhum dado disponível para o período selecionado para gerar o gráfico de saldo acumulado.")
 st.markdown("</div>", unsafe_allow_html=True)
 
 
-# --- Gráfico de Barras Mensal/Anual de Receitas e Despesas (Mantido, mas fora do layout principal) ---
+# --- Novo Gráfico: Saldo Mensal (Receitas - Despesas) ---
 st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-st.subheader("Receitas e Despesas por Período")
+st.subheader("Saldo Mensal (Receitas - Despesas)")
+if not df_filtered.empty:
+    # Garante que 'AnoMes' e 'Valor_Ajustado' estejam disponíveis
+    df_filtered['AnoMes'] = df_filtered['Data'].dt.to_period('M').astype(str)
+    monthly_net_balance = df_filtered.groupby('AnoMes')['Valor_Ajustado'].sum().reset_index()
+    monthly_net_balance.columns = ['AnoMes', 'Saldo_Mensal']
+    
+    # Ordena por data para garantir a correta visualização da série temporal
+    monthly_net_balance['AnoMes_Sort'] = pd.to_datetime(monthly_net_balance['AnoMes'])
+    monthly_net_balance = monthly_net_balance.sort_values(by='AnoMes_Sort')
+
+    fig_net_balance, ax_net_balance = plt.subplots(figsize=(12, 6))
+    ax_net_balance.bar(monthly_net_balance['AnoMes'], monthly_net_balance['Saldo_Mensal'],
+                       color=['g' if x >= 0 else 'r' for x in monthly_net_balance['Saldo_Mensal']],
+                       edgecolor='grey')
+    ax_net_balance.set_title('Saldo Mensal (Receitas - Despesas)')
+    ax_net_balance.set_xlabel('Mês/Ano')
+    ax_net_balance.set_ylabel('Saldo (R$)')
+    ax_net_balance.grid(axis='y', linestyle='--', alpha=0.7)
+    formatter = mticker.FormatStrFormatter('R$ %.2f')
+    ax_net_balance.yaxis.set_major_formatter(formatter)
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    st.pyplot(fig_net_balance)
+    plt.close(fig_net_balance)
+else:
+    st.info("Nenhum dado disponível para o período selecionado para gerar o gráfico de saldo mensal.")
+st.markdown("</div>", unsafe_allow_html=True)
+
+
+# --- Gráfico de Barras Mensal/Anual de Receitas e Despesas (Mantido) ---
+st.markdown("<div class='content-section'>", unsafe_allow_html=True)
+st.subheader("Receitas e Despesas Mensais Detalhadas")
 if not df_filtered.empty:
     df_filtered['AnoMes'] = df_filtered['Data'].dt.to_period('M').astype(str)
     df_grouped = df_filtered.groupby(['AnoMes', 'Tipo'])['Valor'].sum().unstack(fill_value=0).reset_index()
@@ -565,7 +553,7 @@ if not df_filtered.empty:
 
     ax_bar.set_xlabel('Mês/Ano', fontweight='bold')
     ax_bar.set_ylabel('Valor (R$)', fontweight='bold')
-    ax_bar.set_title('Receitas e Despesas Mensais')
+    ax_bar.set_title('Receitas e Despesas Mensais Detalhadas')
     ax_bar.set_xticks([r + bar_width/2 for r in range(len(df_grouped['AnoMes']))])
     ax_bar.set_xticklabels(df_grouped['AnoMes'], rotation=45, ha='right')
     ax_bar.legend()
@@ -580,52 +568,46 @@ else:
 st.markdown("</div>", unsafe_allow_html=True)
 
 
-# --- Filtragem e Exportação de Dados (Mantido) ---
+# --- Estratégias para Melhorar o Rendimento Mensal ---
 st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-st.header("5. Filtragem e Exportação de Dados")
-st.write("Filtre seus dados com base nos valores das colunas e exporte o resultado.")
-
-filter_column = st.selectbox("Selecione a coluna para filtrar:", [''] + list(df.columns))
-
-if filter_column:
-    unique_values = df[filter_column].unique()
-
-    if pd.api.types.is_numeric_dtype(df[filter_column]):
-        min_val, max_val = float(df[filter_column].min()), float(df[filter_column].max())
-        selected_range = st.slider(f"Selecione o intervalo para '{filter_column}':",
-                                   min_value=min_val,
-                                   max_value=max_val,
-                                   value=(min_val, max_val))
-        filtered_df = df[(df[filter_column] >= selected_range[0]) & (df[filter_column] <= selected_range[1])]
-    elif pd.api.types.is_datetime64_any_dtype(df[filter_column]):
-        min_date, max_date = df[filter_column].min(), df[filter_column].max()
-        selected_dates = st.date_input(f"Selecione o intervalo de datas para '{filter_column}':",
-                                       value=(min_date, max_date),
-                                       min_value=min_date,
-                                       max_value=max_date)
-        if len(selected_dates) == 2:
-            filtered_df = df[(df[filter_column] >= pd.to_datetime(selected_dates[0])) &
-                             (df[filter_column] <= pd.to_datetime(selected_dates[1]))]
+st.header("6. Estratégias para Melhorar o Rendimento Mensal")
+if not df_filtered.empty:
+    if saldo_atual < 0:
+        st.markdown(f"**Seu saldo atual é negativo (R$ {saldo_atual:,.2f}) neste período.** É crucial analisar onde o dinheiro está indo.")
+        st.markdown("### Foco Principal: Redução de Despesas")
+        st.markdown("- **Revise suas Top Despesas:** As categorias que mais consomem seu dinheiro são:")
+        if 'top_despesas' in locals() and not top_despesas.empty:
+            for categoria, valor in top_despesas.items():
+                st.markdown(f"  - **{categoria}**: R$ {valor:,.2f}")
+            st.markdown(f"Considere onde você pode cortar ou reduzir gastos nessas áreas. Pequenas mudanças diárias podem gerar grandes economias.")
         else:
-            filtered_df = df
-    else: # Categórica ou Texto
-        selected_values = st.multiselect(f"Selecione os valores para '{filter_column}':",
-                                         options=unique_values,
-                                         default=unique_values)
-        filtered_df = df[df[filter_column].isin(selected_values)]
+            st.markdown("  - *Não foi possível identificar top categorias de despesas para este período.* Certifique-se de ter despesas registradas.")
+        
+        st.markdown("- **Corte gastos discricionários:** Lazer, alimentação fora de casa, compras impulsivas. Estabeleça um limite para esses gastos.")
+        st.markdown("- **Negocie contas:** Verifique se é possível renegociar planos de telefone, internet, seguros, etc.")
+    elif saldo_atual >= 0 and total_despesas > (total_receitas * 0.7): # Se o saldo é positivo mas as despesas são altas
+        st.markdown(f"**Seu saldo atual é positivo (R$ {saldo_atual:,.2f}), o que é ótimo!** No entanto, suas despesas representam uma parcela significativa de suas receitas.")
+        st.markdown("### Foco Principal: Otimização de Gastos e Poupança")
+        st.markdown("- **Onde você pode otimizar?** As categorias com maior despesa são:")
+        if 'top_despesas' in locals() and not top_despesas.empty:
+            for categoria, valor in top_despesas.items():
+                st.markdown(f"  - **{categoria}**: R$ {valor:,.2f}")
+            st.markdown(f"Mesmo com saldo positivo, otimizar gastos nessas áreas pode liberar mais dinheiro para poupança e investimentos.")
+        else:
+            st.markdown("  - *Não foi possível identificar top categorias de despesas para este período.*")
+        st.markdown("- **Automatize a poupança:** Transfira um valor fixo para uma conta de poupança assim que receber sua receita.")
+        st.markdown("- **Crie um orçamento detalhado:** Saber exatamente para onde seu dinheiro está indo é o primeiro passo para o controle.")
+    else:
+        st.markdown(f"**Parabéns! Seu saldo atual é saudável (R$ {saldo_atual:,.2f}).** Você está no caminho certo para uma boa saúde financeira.")
+        st.markdown("### Foco Principal: Crescimento e Investimento")
+        st.markdown("- **Explore novas fontes de receita:** Considere um trabalho extra, venda de itens não utilizados, ou monetize um hobby.")
+        st.markdown("- **Invista seu dinheiro:** Com um saldo positivo, é o momento de fazer seu dinheiro trabalhar para você. Pesquise opções de investimento (renda fixa, fundos, ações) que se alinhem aos seus objetivos.")
+        st.markdown("- **Educação financeira:** Continue aprendendo sobre finanças pessoais e investimentos para tomar decisões mais informadas.")
 
-    if 'filtered_df' in locals():
-        st.write("Dados Filtrados:")
-        st.dataframe(filtered_df)
-        st.write(f"Linhas após a filtragem: {filtered_df.shape[0]}")
-        st.download_button(
-            label="Baixar Dados Filtrados (CSV)",
-            data=filtered_df.to_csv(index=False).encode('utf-8'),
-            file_name="dados_filtrados.csv",
-            mime="text/csv",
-        )
+    st.markdown("---")
+    st.markdown("Lembre-se: A chave para um bom rendimento mensal é o **controle contínuo** e a **adaptação** às suas necessidades financeiras.")
 else:
-    st.info("Selecione uma coluna para aplicar filtros.")
+    st.info("Carregue dados ou adicione lançamentos para receber estratégias personalizadas.")
 
 st.markdown("</div>", unsafe_allow_html=True)
 
