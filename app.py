@@ -1,90 +1,277 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
 from datetime import datetime, timedelta
-import matplotlib.ticker as mticker
 import calendar
 import numpy as np
 
 # --- Configuração da Página ---
-st.set_page_config(layout="wide", page_title="Painel Financeiro Granazen-like")
+st.set_page_config(
+    layout="wide", 
+    page_title="Granazen Finance", 
+    page_icon="💰",
+    initial_sidebar_state="collapsed"
+)
 
-# --- Funções Auxiliares de Estilo ---
+# --- CSS Personalizado ---
 def apply_custom_css():
     st.markdown("""
     <style>
-    /* Estilo geral do aplicativo */
+    :root {
+        --primary: #4e73df;
+        --primary-light: #7a9ef5;
+        --primary-dark: #2c56c8;
+        --success: #1cc88a;
+        --success-light: #4adfa7;
+        --danger: #e74a3b;
+        --danger-light: #ff6b5b;
+        --warning: #f6c23e;
+        --info: #36b9cc;
+        --dark: #5a5c69;
+        --gray: #858796;
+        --light: #f8f9fc;
+        --lighter: #fff;
+    }
+    
+    /* Estilo geral */
     .stApp {
-        background-color: #f0f2f6;
-        color: #333;
-        font-family: "Inter", sans-serif;
+        background-color: var(--light);
+        font-family: 'Nunito', sans-serif;
+        line-height: 1.5;
     }
-
-    /* Títulos principais */
-    h1, h2, h3, h4, h5, h6 {
-        color: #333;
+    
+    /* Títulos */
+    h1 {
+        color: var(--dark);
+        font-weight: 700;
+        font-size: 1.8rem;
+        margin-bottom: 0.5rem;
     }
-
-    /* Estilo para os cards de métricas */
+    
+    h2 {
+        color: var(--dark);
+        font-weight: 600;
+        font-size: 1.5rem;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    h3 {
+        color: var(--dark);
+        font-weight: 600;
+        font-size: 1.2rem;
+    }
+    
+    /* Cards de métricas */
+    .metric-container {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    @media (max-width: 1200px) {
+        .metric-container {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .metric-container {
+            grid-template-columns: 1fr;
+        }
+    }
+    
     .metric-card {
-        background-color: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
-        text-align: left;
-        height: 100%;
+        background: var(--lighter);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+        position: relative;
+        overflow: hidden;
+        border-left: 0.4rem solid;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 2rem 0 rgba(58, 59, 69, 0.2);
+    }
+    
+    .metric-card.primary { border-left-color: var(--primary); }
+    .metric-card.success { border-left-color: var(--success); }
+    .metric-card.danger { border-left-color: var(--danger); }
+    .metric-card.info { border-left-color: var(--info); }
+    
+    .metric-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+    }
+    
+    .metric-primary { color: var(--primary); }
+    .metric-success { color: var(--success); }
+    .metric-danger { color: var(--danger); }
+    .metric-info { color: var(--info); }
+    
+    .metric-title {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        color: var(--gray);
+        margin-bottom: 0.25rem;
+    }
+    
+    .metric-period {
+        font-size: 0.75rem;
+        color: var(--gray);
         display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        border: 1px solid #e0e0e0;
+        align-items: center;
     }
-    .metric-card h3 {
-        margin-top: 0;
-        color: #666;
-        font-size: 1em;
-        font-weight: normal;
+    
+    .metric-period i {
+        margin-right: 0.3rem;
+        font-size: 0.9rem;
     }
-    .metric-card .stMetric {
-        padding: 0;
+    
+    /* Formulários */
+    .stTextInput input, 
+    .stNumberInput input, 
+    .stDateInput input, 
+    .stSelectbox div[data-baseweb="select"] {
+        border-radius: 0.4rem;
+        border: 1px solid #d1d3e2;
+        padding: 0.6rem 1rem;
+        background-color: var(--lighter);
+        font-size: 0.95rem;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
     }
-    .metric-card .stMetric > div:first-child {
-        color: #666;
-        font-size: 0.9em;
+    
+    .stTextInput input:focus, 
+    .stNumberInput input:focus, 
+    .stDateInput input:focus, 
+    .stSelectbox div[data-baseweb="select"]:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+        outline: none;
     }
-    .metric-card .stMetric > div:nth-child(2) {
-        font-size: 1.6em;
-        font-weight: bold;
-        color: #333;
+    
+    .stButton button {
+        border-radius: 0.4rem;
+        font-weight: 600;
+        padding: 0.65rem 1.5rem;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
     }
-    .metric-card .stMetric > div:nth-child(3) {
-        font-size: 0.8em;
-        color: #888;
+    
+    .stButton button.primary {
+        background-color: var(--primary);
+        border-color: var(--primary);
     }
-
-    /* Estilo para as seções de conteúdo */
-    .content-section {
-        background-color: white;
-        padding: 25px;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        margin-bottom: 20px;
-        border: 1px solid #e0e0e0;
+    
+    .stButton button.primary:hover {
+        background-color: var(--primary-dark);
+        border-color: var(--primary-dark);
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(78, 115, 223, 0.3);
     }
-
-    /* Outros estilos... */
+    
+    /* Tabs */
+    .stTabs [role="tablist"] {
+        border-bottom: 1px solid #e3e6f0;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stTabs [role="tab"] {
+        padding: 0.75rem 1.25rem;
+        color: var(--gray);
+        font-weight: 600;
+        margin-right: 0.5rem;
+        border-radius: 0.4rem 0.4rem 0 0;
+        transition: all 0.3s ease;
+    }
+    
+    .stTabs [role="tab"]:hover {
+        color: var(--primary);
+        background-color: rgba(78, 115, 223, 0.05);
+    }
+    
+    .stTabs [aria-selected="true"] {
+        color: var(--primary);
+        border-bottom: 3px solid var(--primary);
+        background-color: transparent;
+    }
+    
+    /* Dataframe */
+    .stDataFrame {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+        border: none;
+    }
+    
+    /* Tooltips */
+    .stTooltip {
+        font-family: 'Nunito', sans-serif;
+        border-radius: 0.3rem;
+        padding: 0.5rem 1rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Seções */
+    .section {
+        background-color: var(--lighter);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Radio buttons */
+    .stRadio [role="radiogroup"] {
+        gap: 1rem;
+    }
+    
+    .stRadio [role="radio"] {
+        padding: 0.5rem 1rem;
+        border-radius: 0.4rem;
+        border: 1px solid #d1d3e2;
+        transition: all 0.3s ease;
+    }
+    
+    .stRadio [role="radio"][aria-checked="true"] {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    /* Ajustes para mobile */
+    @media (max-width: 768px) {
+        .stRadio [role="radiogroup"] {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+    
+    /* Ícones */
+    .icon {
+        margin-right: 0.5rem;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 apply_custom_css()
 
-# --- Funções de Ajuda ---
+# --- Funções Auxiliares ---
+def format_currency(value):
+    return f"R$ {value:,.2f}"
+
 def calculate_metrics(df_filtered, start_date, end_date, prev_month_start, prev_month_end):
-    # Métricas para o período atual
     total_receitas = df_filtered[df_filtered['Tipo'] == 'Receita']['Valor'].sum() if not df_filtered.empty else 0
     total_despesas = df_filtered[df_filtered['Tipo'] == 'Despesa']['Valor'].sum() if not df_filtered.empty else 0
     saldo_atual = total_receitas - total_despesas
 
-    # Métricas para o mês anterior
     prev_month_receitas = 0
     prev_month_despesas = 0
     
@@ -102,374 +289,416 @@ def calculate_metrics(df_filtered, start_date, end_date, prev_month_start, prev_
             prev_month_despesas = df_prev_month[df_prev_month['Tipo'] == 'Despesa']['Valor'].sum() if not df_prev_month.empty else 0
 
     prev_month_saldo = prev_month_receitas - prev_month_despesas
-
     return total_receitas, total_despesas, saldo_atual, prev_month_saldo
 
-# --- Título Principal ---
-st.title("💰 Dashboard de Análise Financeira")
-st.markdown("Este aplicativo simula a perspectiva analítica do Granazen, permitindo que você carregue seus dados financeiros ou insira novos lançamentos manualmente.")
-
-# --- Inicialização de Dados ---
-if 'df' not in st.session_state:
-    st.session_state.df = pd.DataFrame(columns=['Data', 'Descrição', 'Valor', 'Tipo', 'Categoria'])
-    if st.session_state.df.empty:
-        example_data = {
-            'Data': [datetime(2024, 1, 10), datetime(2024, 1, 15), datetime(2024, 2, 5), 
-                    datetime(2024, 2, 12), datetime(2024, 2, 20), datetime(2024, 3, 1), 
-                    datetime(2024, 3, 10), datetime(2024, 3, 15)],
-            'Descrição': ['Salário', 'Aluguel', 'Supermercado', 'Transporte', 'Restaurante', 
-                         'Bônus', 'Conta de Luz', 'Internet'],
-            'Valor': [3000.00, 1500.00, 450.00, 120.00, 80.00, 500.00, 200.00, 90.00],
-            'Tipo': ['Receita', 'Despesa', 'Despesa', 'Despesa', 'Despesa', 'Receita', 'Despesa', 'Despesa'],
-            'Categoria': ['Salário', 'Moradia', 'Alimentação', 'Transporte', 'Lazer', 'Bônus', 'Moradia', 'Moradia']
-        }
-        st.session_state.df = pd.DataFrame(example_data)
-        st.session_state.df['Data'] = pd.to_datetime(st.session_state.df['Data'])
-
-# --- 1. Gerenciar Lançamentos ---
-st.header("1. Gerenciar Lançamentos")
-tab1, tab2 = st.tabs(["Carregar CSV", "Inserir Lançamento Manual"])
-
-with tab1:
-    st.subheader("Carregar Arquivo CSV")
-    uploaded_file = st.file_uploader("Escolha um arquivo CSV com seus lançamentos financeiros", type="csv")
-
-    if uploaded_file is not None:
-        try:
-            temp_df = pd.read_csv(uploaded_file)
-            st.session_state.df = temp_df
-            st.session_state.df['Data'] = pd.to_datetime(st.session_state.df['Data'], errors='coerce')
-            st.session_state.df = st.session_state.df.dropna(subset=['Data'])
-            st.success("Arquivo CSV carregado com sucesso!")
-        except Exception as e:
-            st.error(f"Ocorreu um erro ao processar o arquivo: {e}")
-
-with tab2:
-    st.subheader("Inserir Novo Lançamento")
-    with st.form("new_transaction_form"):
-        col_date, col_type = st.columns(2)
-        with col_date:
-            new_data = st.date_input("Data", value=datetime.now())
-        with col_type:
-            new_tipo = st.selectbox("Tipo", ["Receita", "Despesa"])
-        
-        new_valor = st.number_input("Valor", min_value=0.01, format="%.2f")
-        new_descricao = st.text_input("Descrição")
-        new_categoria = st.text_input("Categoria")
-
-        submitted = st.form_submit_button("Adicionar Lançamento")
-        if submitted:
-            if new_descricao and new_valor and new_categoria:
-                new_entry = pd.DataFrame([{
-                    'Data': new_data,
-                    'Descrição': new_descricao,
-                    'Valor': new_valor,
-                    'Tipo': new_tipo,
-                    'Categoria': new_categoria
-                }])
-                st.session_state.df = pd.concat([st.session_state.df, new_entry], ignore_index=True)
-                st.success("Lançamento adicionado com sucesso!")
-            else:
-                st.warning("Por favor, preencha todos os campos.")
-
-# --- Validação de Dados ---
-df = st.session_state.df.copy()
-if not df.empty:
-    required_cols = ['Data', 'Descrição', 'Valor', 'Tipo', 'Categoria']
-    missing_cols = [col for col in required_cols if col not in df.columns]
+def create_monthly_flow_chart(df):
+    df_monthly = df.copy()
+    df_monthly['Mês'] = df_monthly['Data'].dt.to_period('M').astype(str)
+    monthly_summary = df_monthly.groupby(['Mês', 'Tipo'])['Valor'].sum().unstack().fillna(0)
     
-    if missing_cols:
-        st.error(f"Faltam colunas essenciais: {', '.join(missing_cols)}")
-    else:
-        df['Data'] = pd.to_datetime(df['Data'], errors='coerce')
-        df = df.dropna(subset=['Data'])
-        df['Valor'] = pd.to_numeric(df['Valor'], errors='coerce')
-        df = df.dropna(subset=['Valor'])
-        df = df[df['Tipo'].isin(['Receita', 'Despesa'])]
-
-# --- Seleção de Período ---
-st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-col_month_nav, col_period_selection = st.columns([1, 3])
-
-with col_month_nav:
-    st.markdown("### ← Fevereiro →")
-
-with col_period_selection:
-    col_buttons, col_date_picker, col_clear_button = st.columns([2, 3, 1])
+    fig = go.Figure()
     
-    with col_buttons:
-        st.markdown("<div class='period-buttons-container'>", unsafe_allow_html=True)
-        if st.button("Essa semana"):
-            today = datetime.now().date()
-            start_date = today - timedelta(days=today.weekday())
-            end_date = start_date + timedelta(days=6)
-            st.session_state.start_date = start_date
-            st.session_state.end_date = end_date
-        if st.button("Esse mês"):
-            today = datetime.now().date()
-            start_date = today.replace(day=1)
-            end_date = (today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-            st.session_state.start_date = start_date
-            st.session_state.end_date = end_date
-        if st.button("Hoje"):
-            today = datetime.now().date()
-            st.session_state.start_date = today
-            st.session_state.end_date = today
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with col_date_picker:
-        if 'start_date' not in st.session_state or 'end_date' not in st.session_state:
-            today = datetime.now().date()
-            st.session_state.start_date = today.replace(day=1)
-            st.session_state.end_date = (today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-
-        selected_date_range = st.date_input(
-            "Período Personalizado",
-            value=(st.session_state.start_date, st.session_state.end_date),
-            key="date_range_picker",
-            label_visibility="collapsed"
+    fig.add_trace(go.Bar(
+        x=monthly_summary.index,
+        y=monthly_summary['Receita'],
+        name='Receitas',
+        marker_color='#1cc88a',
+        hovertemplate='<b>%{x}</b><br>Receitas: R$ %{y:,.2f}<extra></extra>'
+    ))
+    
+    fig.add_trace(go.Bar(
+        x=monthly_summary.index,
+        y=-monthly_summary['Despesa'],
+        name='Despesas',
+        marker_color='#e74a3b',
+        hovertemplate='<b>%{x}</b><br>Despesas: R$ %{y:,.2f}<extra></extra>'
+    ))
+    
+    fig.update_layout(
+        title='Fluxo Mensal de Receitas e Despesas',
+        barmode='relative',
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        hovermode='x unified',
+        height=450,
+        margin=dict(t=50, b=50, l=50, r=50),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        xaxis=dict(
+            showgrid=False,
+            tickangle=-45
+        ),
+        yaxis=dict(
+            gridcolor='#e3e6f0',
+            tickprefix="R$ "
         )
-        
-        if len(selected_date_range) == 2:
-            st.session_state.start_date, st.session_state.end_date = selected_date_range
-
-    with col_clear_button:
-        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("Limpar"):
-            st.session_state.start_date = None
-            st.session_state.end_date = None
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# --- Filtro de Dados ---
-if not df.empty and 'start_date' in st.session_state and 'end_date' in st.session_state:
-    df_filtered = df[
-        (df['Data'].dt.date >= st.session_state.start_date) &
-        (df['Data'].dt.date <= st.session_state.end_date)
-    ].copy()
-else:
-    df_filtered = pd.DataFrame(columns=df.columns)
-
-# Calcula período do mês anterior
-today = datetime.now().date()
-first_day_current_month = today.replace(day=1)
-last_day_prev_month = first_day_current_month - timedelta(days=1)
-first_day_prev_month = last_day_prev_month.replace(day=1)
-
-# --- Cards de Métricas ---
-st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-col_saldo, col_receitas, col_despesas, col_investimentos = st.columns(4)
-
-if not df.empty and not df_filtered.empty:
-    total_receitas, total_despesas, saldo_atual, prev_month_saldo = calculate_metrics(
-        df_filtered, st.session_state.start_date, st.session_state.end_date, 
-        first_day_prev_month, last_day_prev_month
     )
-
-    with col_saldo:
-        st.markdown(f"""
-        <div class="metric-card">
-            <h3>Saldo</h3>
-            <div style="font-size: 1.8em; font-weight: bold; color: {'#28a745' if saldo_atual >= 0 else '#dc3545'};">R$ {saldo_atual:,.2f}</div>
-            <div style="font-size: 0.8em; color: #888;">{st.session_state.start_date.day} {calendar.month_abbr[st.session_state.start_date.month]}. até {st.session_state.end_date.day} {calendar.month_abbr[st.session_state.end_date.month]}.</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col_receitas:
-        st.markdown(f"""
-        <div class="metric-card">
-            <h3>Receitas</h3>
-            <div style="font-size: 1.8em; font-weight: bold; color: #28a745;">R$ {total_receitas:,.2f}</div>
-            <div style="font-size: 0.8em; color: #888;">{st.session_state.start_date.day} {calendar.month_abbr[st.session_state.start_date.month]}. até {st.session_state.end_date.day} {calendar.month_abbr[st.session_state.end_date.month]}.</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col_despesas:
-        st.markdown(f"""
-        <div class="metric-card">
-            <h3>Despesas</h3>
-            <div style="font-size: 1.8em; font-weight: bold; color: #dc3545;">R$ {total_despesas:,.2f}</div>
-            <div style="font-size: 0.8em; color: #888;">{st.session_state.start_date.day} {calendar.month_abbr[st.session_state.start_date.month]}. até {st.session_state.end_date.day} {calendar.month_abbr[st.session_state.end_date.month]}.</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col_investimentos:
-        st.markdown(f"""
-        <div class="metric-card">
-            <h3>Investimentos</h3>
-            <div style="font-size: 1.8em; font-weight: bold; color: #007bff;">R$ 0,00</div>
-            <div style="font-size: 0.8em; color: #888;">(Dados não disponíveis)</div>
-        </div>
-        """, unsafe_allow_html=True)
-else:
-    st.info("Carregue dados ou adicione lançamentos para ver as métricas.")
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# --- Gráficos e Tabelas ---
-st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-col_monthly_chart, col_expense_summary = st.columns([2, 1])
-
-with col_monthly_chart:
-    st.subheader("Entradas e Saídas Mensal")
-    if not df_filtered.empty:
-        df_filtered['AnoMes'] = df_filtered['Data'].dt.to_period('M').astype(str)
-        df_monthly_summary = df_filtered.groupby(['AnoMes', 'Tipo'])['Valor'].sum().unstack(fill_value=0).reset_index()
-        
-        if 'Receita' not in df_monthly_summary.columns:
-            df_monthly_summary['Receita'] = 0
-        if 'Despesa' not in df_monthly_summary.columns:
-            df_monthly_summary['Despesa'] = 0
-
-        df_monthly_summary['AnoMes_Sort'] = pd.to_datetime(df_monthly_summary['AnoMes'])
-        df_monthly_summary = df_monthly_summary.sort_values('AnoMes_Sort')
-
-        fig_monthly_flow, ax_monthly_flow = plt.subplots(figsize=(10, 5))
-        bar_width = 0.35
-        r_index = np.arange(len(df_monthly_summary['AnoMes']))
-        
-        ax_monthly_flow.bar(r_index - bar_width/2, df_monthly_summary['Receita'], color='#28a745', width=bar_width, label='Receita')
-        ax_monthly_flow.bar(r_index + bar_width/2, df_monthly_summary['Despesa'], color='#dc3545', width=bar_width, label='Despesa')
-
-        ax_monthly_flow.set_xlabel('Mês/Ano')
-        ax_monthly_flow.set_ylabel('Valor (R$)')
-        ax_monthly_flow.set_xticks(r_index)
-        ax_monthly_flow.set_xticklabels(df_monthly_summary['AnoMes'], rotation=45, ha='right')
-        ax_monthly_flow.legend()
-        ax_monthly_flow.grid(axis='y', linestyle='--', alpha=0.7)
-        ax_monthly_flow.yaxis.set_major_formatter(mticker.FormatStrFormatter('R$ %.2f'))
-        plt.tight_layout()
-        st.pyplot(fig_monthly_flow)
-        plt.close(fig_monthly_flow)
-    else:
-        st.info("Nenhum dado disponível para o período selecionado.")
-
-with col_expense_summary:
-    st.subheader("Resumo das Despesas")
-    if not df_filtered.empty:
-        df_despesas_summary = df_filtered[df_filtered['Tipo'] == 'Despesa'].copy()
-        if not df_despesas_summary.empty:
-            expense_summary = df_despesas_summary.groupby('Categoria')['Valor'].sum().reset_index()
-            expense_summary.columns = ['Categoria', 'Gastos']
-            expense_summary = expense_summary.sort_values('Gastos', ascending=False)
-            
-            total_expenses = expense_summary['Gastos'].sum()
-            total_income = df_filtered[df_filtered['Tipo'] == 'Receita']['Valor'].sum()
-            
-            expense_summary['% das Despesas'] = (expense_summary['Gastos'] / total_expenses * 100).map('{:.2f}%'.format)
-            expense_summary['% da Receita'] = (expense_summary['Gastos'] / total_income * 100).map('{:.2f}%'.format) if total_income > 0 else '0.00%'
-            
-            st.dataframe(expense_summary, use_container_width=True)
-        else:
-            st.info("Nenhuma despesa no período selecionado.")
-    else:
-        st.info("Nenhum dado disponível.")
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# --- Últimas Transações e Gráfico de Pizza ---
-st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-col_transactions, col_expense_type_chart = st.columns([2, 1])
-
-with col_transactions:
-    st.subheader("Últimas Transações")
-    search_query = st.text_input("Pesquisar receitas ou gastos", key="search_transactions")
-
-    df_display = df_filtered.copy()
-    if search_query:
-        df_display = df_display[
-            df_display['Descrição'].str.contains(search_query, case=False, na=False) |
-            df_display['Categoria'].str.contains(search_query, case=False, na=False)
-        ]
-
-    tab_all, tab_expenses, tab_income = st.tabs(["Todas", "Despesas", "Receitas"])
     
-    with tab_all:
-        st.dataframe(df_display[['Data', 'Descrição', 'Valor', 'Tipo', 'Categoria']].tail(10), use_container_width=True)
-    with tab_expenses:
-        st.dataframe(df_display[df_display['Tipo'] == 'Despesa'][['Data', 'Descrição', 'Valor', 'Categoria']].tail(10), use_container_width=True)
-    with tab_income:
-        st.dataframe(df_display[df_display['Tipo'] == 'Receita'][['Data', 'Descrição', 'Valor', 'Categoria']].tail(10), use_container_width=True)
+    return fig
 
-with col_expense_type_chart:
-    st.subheader("Gastos por Tipo de Despesa")
-    if not df_filtered.empty:
-        df_despesas_type = df_filtered[df_filtered['Tipo'] == 'Despesa'].copy()
-        
-        if not df_despesas_type.empty:
-            fixed_categories = ['Moradia', 'Internet', 'Seguros', 'Assinaturas']
-            df_despesas_type['Tipo_Gasto'] = df_despesas_type['Categoria'].apply(
-                lambda x: 'Fixa' if x in fixed_categories else 'Variável'
-            )
+def create_expense_pie_chart(df):
+    df_despesas = df[df['Tipo'] == 'Despesa']
+    if df_despesas.empty:
+        return None
+    
+    expense_by_category = df_despesas.groupby('Categoria')['Valor'].sum().reset_index()
+    
+    fig = px.pie(
+        expense_by_category,
+        values='Valor',
+        names='Categoria',
+        title='Distribuição das Despesas por Categoria',
+        hole=0.5,
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+    
+    fig.update_traces(
+        textposition='inside',
+        textinfo='percent+label',
+        hovertemplate='<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Percentual: %{percent}<extra></extra>',
+        marker=dict(line=dict(color='#fff', width=1))
+    )
+    
+    fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        height=450,
+        showlegend=False,
+        margin=dict(t=50, b=50, l=50, r=50),
+        uniformtext_minsize=12,
+        uniformtext_mode='hide'
+    )
+    
+    return fig
 
-            gastos_por_tipo = df_despesas_type.groupby('Tipo_Gasto')['Valor'].sum()
-            
-            fig_expense_type, ax_expense_type = plt.subplots(figsize=(6, 6))
-            ax_expense_type.pie(gastos_por_tipo, labels=gastos_por_tipo.index,
-                              autopct='%1.1f%%', startangle=90, wedgeprops={'width': 0.4})
-            ax_expense_type.set_title('Distribuição de Gastos')
-            ax_expense_type.axis('equal')
-            st.pyplot(fig_expense_type)
-            plt.close(fig_expense_type)
-        else:
-            st.info("Nenhuma despesa no período.")
-    else:
-        st.info("Nenhum dado disponível.")
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# --- Saldo Acumulado ---
-st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-st.subheader("Evolução do Saldo Acumulado")
-if not df_filtered.empty:
-    df_saldo = df_filtered.copy()
+def create_balance_chart(df):
+    df_saldo = df.copy()
     df_saldo = df_saldo.sort_values('Data')
     df_saldo['Valor_Ajustado'] = df_saldo.apply(
         lambda x: x['Valor'] if x['Tipo'] == 'Receita' else -x['Valor'], axis=1
     )
     df_saldo['Saldo_Acumulado'] = df_saldo['Valor_Ajustado'].cumsum()
+    
+    fig = go.Figure()
+    
+    fig.add_trace(go.Scatter(
+        x=df_saldo['Data'],
+        y=df_saldo['Saldo_Acumulado'],
+        mode='lines+markers',
+        name='Saldo Acumulado',
+        line=dict(color='#4e73df', width=3),
+        marker=dict(size=8, color='#4e73df'),
+        hovertemplate='<b>%{x|%d/%m/%Y}</b><br>Saldo: R$ %{y:,.2f}<extra></extra>',
+        fill='tozeroy',
+        fillcolor='rgba(78, 115, 223, 0.1)'
+    ))
+    
+    fig.update_layout(
+        title='Evolução do Saldo Acumulado',
+        xaxis_title='Data',
+        yaxis_title='Saldo (R$)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        height=450,
+        hovermode='x unified',
+        margin=dict(t=50, b=50, l=50, r=50),
+        xaxis=dict(
+            showgrid=False,
+            tickformat='%d/%m'
+        ),
+        yaxis=dict(
+            gridcolor='#e3e6f0',
+            tickprefix="R$ "
+        )
+    )
+    
+    return fig
 
-    fig_saldo, ax_saldo = plt.subplots(figsize=(12, 6))
-    ax_saldo.plot(df_saldo['Data'], df_saldo['Saldo_Acumulado'], marker='o', linestyle='-', color='#007bff')
-    ax_saldo.set_title('Saldo Acumulado')
-    ax_saldo.set_xlabel('Data')
-    ax_saldo.set_ylabel('Saldo (R$)')
-    ax_saldo.grid(True)
-    ax_saldo.yaxis.set_major_formatter(mticker.FormatStrFormatter('R$ %.2f'))
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    st.pyplot(fig_saldo)
-    plt.close(fig_saldo)
-else:
-    st.info("Nenhum dado disponível para o período selecionado.")
+# --- Inicialização de Dados ---
+if 'df' not in st.session_state:
+    st.session_state.df = pd.DataFrame(columns=['Data', 'Descrição', 'Valor', 'Tipo', 'Categoria'])
+    
+    # Dados de exemplo
+    example_data = {
+        'Data': [
+            datetime(2024, 1, 10), datetime(2024, 1, 15), datetime(2024, 1, 20),
+            datetime(2024, 2, 5), datetime(2024, 2, 12), datetime(2024, 2, 20),
+            datetime(2024, 3, 1), datetime(2024, 3, 10), datetime(2024, 3, 15),
+            datetime(2024, 3, 25), datetime(2024, 4, 5), datetime(2024, 4, 15)
+        ],
+        'Descrição': [
+            'Salário', 'Aluguel', 'Supermercado', 
+            'Freelance', 'Transporte', 'Restaurante', 
+            'Bônus', 'Conta de Luz', 'Internet',
+            'Presente', 'Salário', 'Academia'
+        ],
+        'Valor': [
+            3000.00, 1500.00, 450.00,
+            1200.00, 120.00, 80.00,
+            500.00, 200.00, 90.00,
+            150.00, 3000.00, 120.00
+        ],
+        'Tipo': [
+            'Receita', 'Despesa', 'Despesa',
+            'Receita', 'Despesa', 'Despesa',
+            'Receita', 'Despesa', 'Despesa',
+            'Despesa', 'Receita', 'Despesa'
+        ],
+        'Categoria': [
+            'Salário', 'Moradia', 'Alimentação',
+            'Freelance', 'Transporte', 'Lazer',
+            'Bônus', 'Moradia', 'Moradia',
+            'Lazer', 'Salário', 'Saúde'
+        ]
+    }
+    st.session_state.df = pd.DataFrame(example_data)
+    st.session_state.df['Data'] = pd.to_datetime(st.session_state.df['Data'])
 
-st.markdown("</div>", unsafe_allow_html=True)
+# --- Header ---
+col1, col2 = st.columns([1, 3])
+with col1:
+    st.image("https://via.placeholder.com/150x50?text=Granazen", width=150)
+with col2:
+    st.title("Dashboard Financeiro")
 
-# --- Estratégias ---
-st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-st.header("Estratégias para Melhorar o Rendimento Mensal")
-if not df_filtered.empty and 'saldo_atual' in locals():
-    df_despesas_filtered = df_filtered[df_filtered['Tipo'] == 'Despesa']
-    top_despesas = pd.Series()
-    if not df_despesas_filtered.empty:
-        top_despesas = df_despesas_filtered.groupby('Categoria')['Valor'].sum().nlargest(5)
+st.markdown("Visualize e analise suas finanças pessoais com insights poderosos")
 
-    if saldo_atual < 0:
-        st.markdown(f"**Seu saldo atual é negativo (R$ {saldo_atual:,.2f}).** Foque em reduzir despesas.")
-        if not top_despesas.empty:
-            st.markdown("**Principais categorias de gastos:**")
-            for categoria, valor in top_despesas.items():
-                st.markdown(f"- **{categoria}**: R$ {valor:,.2f}")
-    elif saldo_atual >= 0 and total_despesas > (total_receitas * 0.7):
-        st.markdown(f"**Seu saldo é positivo (R$ {saldo_atual:,.2f}), mas suas despesas são altas.** Otimize seus gastos.")
+# --- Seção 1: Gerenciar Lançamentos ---
+st.header("📝 Gerenciar Lançamentos")
+tab1, tab2 = st.tabs(["📤 Carregar CSV", "✏️ Inserir Manualmente"])
+
+with tab1:
+    st.subheader("Carregar Extrato Bancário")
+    uploaded_file = st.file_uploader(
+        "Selecione seu arquivo CSV", 
+        type="csv", 
+        help="O arquivo deve conter colunas: Data, Descrição, Valor, Tipo, Categoria",
+        key="file_uploader"
+    )
+    
+    if uploaded_file is not None:
+        try:
+            temp_df = pd.read_csv(uploaded_file)
+            required_cols = ['Data', 'Descrição', 'Valor', 'Tipo', 'Categoria']
+            if all(col in temp_df.columns for col in required_cols):
+                st.session_state.df = temp_df
+                st.session_state.df['Data'] = pd.to_datetime(st.session_state.df['Data'], errors='coerce')
+                st.session_state.df = st.session_state.df.dropna(subset=['Data'])
+                st.success("Dados carregados com sucesso!")
+                
+                with st.expander("Visualizar dados carregados"):
+                    st.dataframe(st.session_state.df.head(), use_container_width=True)
+            else:
+                missing_cols = [col for col in required_cols if col not in temp_df.columns]
+                st.error(f"O arquivo não contém todas as colunas necessárias. Faltando: {', '.join(missing_cols)}")
+        except Exception as e:
+            st.error(f"Erro ao processar arquivo: {str(e)}")
+
+with tab2:
+    st.subheader("Adicionar Transação Manual")
+    with st.form("transaction_form", clear_on_submit=True):
+        cols = st.columns([1, 1, 1])
+        
+        with cols[0]:
+            data = st.date_input("Data*", value=datetime.now())
+            tipo = st.selectbox("Tipo*", ["Receita", "Despesa"])
+        
+        with cols[1]:
+            valor = st.number_input("Valor (R$)*", min_value=0.01, format="%.2f", step=0.01)
+            categoria = st.selectbox(
+                "Categoria*", 
+                ["Moradia", "Alimentação", "Transporte", "Lazer", "Saúde", "Educação", "Outros"]
+            )
+        
+        with cols[2]:
+            descricao = st.text_input("Descrição*")
+            st.markdown("<div style='height: 27px;'></div>", unsafe_allow_html=True)
+            submitted = st.form_submit_button("💾 Salvar Transação", type="primary")
+        
+        if submitted:
+            if descricao and valor:
+                new_entry = pd.DataFrame([{
+                    'Data': data,
+                    'Descrição': descricao,
+                    'Valor': valor,
+                    'Tipo': tipo,
+                    'Categoria': categoria
+                }])
+                st.session_state.df = pd.concat([st.session_state.df, new_entry], ignore_index=True)
+                st.success("Transação adicionada com sucesso!")
+            else:
+                st.warning("Preencha todos os campos obrigatórios (*)")
+
+# --- Filtro de Período ---
+st.header("🔍 Filtros de Período")
+col1, col2, col3 = st.columns([2, 3, 1])
+
+with col1:
+    period = st.radio(
+        "Período",
+        ["Hoje", "Esta Semana", "Este Mês", "Personalizado"],
+        horizontal=True,
+        key="period_radio"
+    )
+
+with col2:
+    if period == "Personalizado":
+        date_range = st.date_input(
+            "Selecione o período",
+            [],
+            label_visibility="collapsed",
+            key="date_range_picker"
+        )
+        if len(date_range) == 2:
+            start_date, end_date = date_range
+        else:
+            start_date = end_date = datetime.now().date()
     else:
-        st.markdown(f"**Parabéns! Seu saldo é saudável (R$ {saldo_atual:,.2f}).** Considere investir o excedente.")
-else:
-    st.info("Carregue dados para receber estratégias personalizadas.")
+        today = datetime.now().date()
+        if period == "Hoje":
+            start_date = end_date = today
+        elif period == "Esta Semana":
+            start_date = today - timedelta(days=today.weekday())
+            end_date = start_date + timedelta(days=6)
+        else:  # Este Mês
+            start_date = today.replace(day=1)
+            end_date = (today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
 
-st.markdown("</div>", unsafe_allow_html=True)
+with col3:
+    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+    if st.button("🔄 Limpar Filtros", key="clear_filters"):
+        period = "Este Mês"
+        start_date = datetime.now().date().replace(day=1)
+        end_date = (datetime.now().date().replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        st.rerun()
+
+# Filtra os dados
+df_filtered = st.session_state.df[
+    (st.session_state.df['Data'].dt.date >= start_date) & 
+    (st.session_state.df['Data'].dt.date <= end_date)
+].copy()
+
+# --- Cards de Métricas ---
+st.header("📊 Visão Geral")
+
+if not df_filtered.empty:
+    total_receitas, total_despesas, saldo_atual, prev_month_saldo = calculate_metrics(
+        df_filtered, start_date, end_date, 
+        (start_date - timedelta(days=30)), start_date - timedelta(days=1))
+    
+    # Calcula variação em relação ao mês anterior
+    if prev_month_saldo != 0:
+        saldo_variation = ((saldo_atual - prev_month_saldo) / abs(prev_month_saldo)) * 100
+    else:
+        saldo_variation = 0
+    
+    cols = st.columns(4)
+    with cols[0]:
+        st.markdown(f"""
+        <div class="metric-card primary">
+            <div class="metric-title">Saldo Total</div>
+            <div class="metric-value metric-primary">{format_currency(saldo_atual)}</div>
+            <div class="metric-period">
+                <i>📅</i> {start_date.strftime('%d/%m')} - {end_date.strftime('%d/%m/%Y')}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with cols[1]:
+        st.markdown(f"""
+        <div class="metric-card success">
+            <div class="metric-title">Receitas</div>
+            <div class="metric-value metric-success">{format_currency(total_receitas)}</div>
+            <div class="metric-period">
+                <i>📈</i> {len(df_filtered[df_filtered['Tipo'] == 'Receita'])} transações
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with cols[2]:
+        st.markdown(f"""
+        <div class="metric-card danger">
+            <div class="metric-title">Despesas</div>
+            <div class="metric-value metric-danger">{format_currency(total_despesas)}</div>
+            <div class="metric-period">
+                <i>📉</i> {len(df_filtered[df_filtered['Tipo'] == 'Despesa'])} transações
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with cols[3]:
+        variation_icon = "🟢" if saldo_variation >= 0 else "🔴"
+        variation_text = f"{variation_icon} {abs(saldo_variation):.1f}% vs mês anterior"
+        
+        st.markdown(f"""
+        <div class="metric-card info">
+            <div class="metric-title">Variação do Saldo</div>
+            <div class="metric-value metric-info">{variation_text}</div>
+            <div class="metric-period">
+                <i>🔄</i> Mês anterior: {format_currency(prev_month_saldo)}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# --- Gráficos Principais ---
+st.header("📈 Análise Detalhada")
+
+if not df_filtered.empty:
+    tab1, tab2, tab3 = st.tabs(["Fluxo Mensal", "Distribuição de Despesas", "Evolução do Saldo"])
+    
+    with tab1:
+        fig1 = create_monthly_flow_chart(df_filtered)
+        st.plotly_chart(fig1, use_container_width=True)
+    
+    with tab2:
+        fig2 = create_expense_pie_chart(df_filtered)
+        if fig2:
+            st.plotly_chart(fig2, use_container_width=True)
+        else:
+            st.warning("Nenhuma despesa encontrada no período selecionado.")
+    
+    with tab3:
+        fig3 = create_balance_chart(df_filtered)
+        st.plotly_chart(fig3, use_container_width=True)
+
+# --- Tabela de Transações ---
+st.header("🧾 Últimas Transações")
+if not df_filtered.empty:
+    search_query = st.text_input("🔍 Pesquisar transações", key="search_transactions")
+    
+    if search_query:
+        df_display = df_filtered[
+            df_filtered['Descrição'].str.contains(search_query, case=False, na=False) |
+            df_filtered['Categoria'].str.contains(search_query, case=False, na=False)
+        ]
+    else:
+        df_display = df_filtered
+    
+    st.dataframe(
+        df_display.sort_values('Data', ascending=False)[['Data', 'Descrição', 'Valor', 'Tipo', 'Categoria']],
+        column_config={
+            "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
+            "Valor": st.column_config.NumberColumn("Valor (R$)", format="%.2f"),
+            "Tipo": st.column_config.TextColumn("Tipo"),
+            "Categoria": st.column_config.TextColumn("Categoria")
+        },
+        use_container_width=True,
+        hide_index=True,
+        height=400
+    )
+else:
+    st.info("Nenhuma transação encontrada para o período selecionado")
 
 # --- Rodapé ---
 st.markdown("---")
-st.markdown("Desenvolvido com Streamlit e Matplotlib para uma experiência de análise financeira intuitiva.")
-
+st.markdown("""
+<div style="text-align: center; color: var(--gray); font-size: 0.9rem;">
+    <p><strong>Granazen Finance Dashboard</strong> · Desenvolvido com Streamlit · Estilo inspirado no Granazen</p>
+    <p>© 2024 Todos os direitos reservados</p>
+</div>
+""", unsafe_allow_html=True)
