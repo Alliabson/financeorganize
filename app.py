@@ -3,8 +3,9 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-import calendar
-import numpy as np
+import requests
+from io import StringIO
+import base64
 
 # --- Configuração da Página ---
 st.set_page_config(
@@ -34,14 +35,12 @@ def apply_custom_css():
         --lighter: #fff;
     }
     
-    /* Estilo geral */
     .stApp {
         background-color: var(--light);
         font-family: 'Nunito', sans-serif;
         line-height: 1.5;
     }
     
-    /* Títulos */
     h1 {
         color: var(--dark);
         font-weight: 700;
@@ -63,7 +62,6 @@ def apply_custom_css():
         font-size: 1.2rem;
     }
     
-    /* Cards de métricas */
     .metric-container {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -136,7 +134,6 @@ def apply_custom_css():
         font-size: 0.9rem;
     }
     
-    /* Formulários */
     .stTextInput input, 
     .stNumberInput input, 
     .stDateInput input, 
@@ -178,7 +175,6 @@ def apply_custom_css():
         box-shadow: 0 0.5rem 1rem rgba(78, 115, 223, 0.3);
     }
     
-    /* Tabs */
     .stTabs [role="tablist"] {
         border-bottom: 1px solid #e3e6f0;
         margin-bottom: 1.5rem;
@@ -204,14 +200,12 @@ def apply_custom_css():
         background-color: transparent;
     }
     
-    /* Dataframe */
     .stDataFrame {
         border-radius: 0.5rem;
         box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
         border: none;
     }
     
-    /* Tooltips */
     .stTooltip {
         font-family: 'Nunito', sans-serif;
         border-radius: 0.3rem;
@@ -219,7 +213,6 @@ def apply_custom_css():
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
     }
     
-    /* Seções */
     .section {
         background-color: var(--lighter);
         border-radius: 0.5rem;
@@ -228,7 +221,6 @@ def apply_custom_css():
         margin-bottom: 1.5rem;
     }
     
-    /* Radio buttons */
     .stRadio [role="radiogroup"] {
         gap: 1rem;
     }
@@ -246,7 +238,6 @@ def apply_custom_css():
         border-color: var(--primary);
     }
     
-    /* Ajustes para mobile */
     @media (max-width: 768px) {
         .stRadio [role="radiogroup"] {
             flex-direction: column;
@@ -254,7 +245,6 @@ def apply_custom_css():
         }
     }
     
-    /* Ícones */
     .icon {
         margin-right: 0.5rem;
     }
@@ -268,7 +258,6 @@ def format_currency(value):
     return f"R$ {value:,.2f}"
 
 def calculate_metrics(df_filtered_current_period, start_date, end_date, prev_month_start, prev_month_end):
-    # Métricas para o período atual
     total_receitas = df_filtered_current_period[df_filtered_current_period['Tipo'] == 'Receita']['Valor'].sum() if not df_filtered_current_period.empty else 0
     total_despesas = df_filtered_current_period[df_filtered_current_period['Tipo'] == 'Despesa']['Valor'].sum() if not df_filtered_current_period.empty else 0
     saldo_atual = total_receitas - total_despesas
@@ -277,7 +266,6 @@ def calculate_metrics(df_filtered_current_period, start_date, end_date, prev_mon
     prev_month_despesas = 0
     
     if not st.session_state.df.empty:
-        # Garante que a coluna 'Data' do st.session_state.df seja datetime para o cálculo do mês anterior
         df_full_data_copy = st.session_state.df.copy()
         df_full_data_copy['Data'] = pd.to_datetime(df_full_data_copy['Data'], errors='coerce')
         df_full_data_copy = df_full_data_copy.dropna(subset=['Data'])
@@ -301,15 +289,13 @@ def create_monthly_flow_chart(df):
     df_monthly['Mês'] = df_monthly['Data'].dt.to_period('M').astype(str)
     monthly_summary = df_monthly.groupby(['Mês', 'Tipo'])['Valor'].sum().unstack().fillna(0)
     
-    # Garante que as colunas 'Receita' e 'Despesa' existam
     for tipo in ['Receita', 'Despesa']:
         if tipo not in monthly_summary.columns:
             monthly_summary[tipo] = 0
     
-    # Ordena os meses para garantir a sequência correta no gráfico
     monthly_summary.index = pd.PeriodIndex(monthly_summary.index, freq='M')
     monthly_summary = monthly_summary.sort_index()
-    monthly_summary.index = monthly_summary.index.astype(str) # Converte de volta para string para Plotly
+    monthly_summary.index = monthly_summary.index.astype(str)
 
     fig = go.Figure()
     
@@ -377,7 +363,7 @@ def create_expense_pie_chart(df):
         textinfo='percent+label',
         hovertemplate='<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Percentual: %{percent}<extra></extra>',
         marker=dict(line=dict(color='#fff', width=1))
-    )
+    
     fig.update_layout(
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -436,54 +422,91 @@ def create_balance_chart(df):
     
     return fig
 
+# --- Funções para Integração com GitHub ---
+def load_data_from_github():
+    url = "https://raw.githubusercontent.com/Alliabson/financeorganize/main/data/lancamentos.csv"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        df = pd.read_csv(StringIO(response.text))
+        df['Data'] = pd.to_datetime(df['Data'], errors='coerce')
+        return df.dropna(subset=['Data'])
+    except Exception as e:
+        st.error(f"Erro ao carregar dados do GitHub: {str(e)}")
+        return pd.DataFrame(columns=['Data', 'Descrição', 'Valor', 'Tipo', 'Categoria'])
+
+def save_data_locally():
+    try:
+        st.session_state.df.to_csv('lancamentos.csv', index=False)
+        st.success("Dados salvos localmente em lancamentos.csv")
+    except Exception as e:
+        st.error(f"Erro ao salvar localmente: {str(e)}")
+
+def get_csv_download_link():
+    csv = st.session_state.df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()
+    href = f'<a href="data:file/csv;base64,{b64}" download="lancamentos.csv" style="background-color: var(--primary); color: white; padding: 0.5rem 1rem; border-radius: 0.4rem; text-decoration: none;">📥 Baixar CSV Atualizado</a>'
+    return href
+
 # --- Inicialização de Dados ---
 if 'df' not in st.session_state:
-    st.session_state.df = pd.DataFrame(columns=['Data', 'Descrição', 'Valor', 'Tipo', 'Categoria'])
+    st.session_state.df = load_data_from_github()
     
-    # Dados de exemplo
-    example_data = {
-        'Data': [
-            datetime(2024, 1, 10), datetime(2024, 1, 15), datetime(2024, 1, 20),
-            datetime(2024, 2, 5), datetime(2024, 2, 12), datetime(2024, 2, 20),
-            datetime(2024, 3, 1), datetime(2024, 3, 10), datetime(2024, 3, 15),
-            datetime(2024, 3, 25), datetime(2024, 4, 5), datetime(2024, 4, 15)
-        ],
-        'Descrição': [
-            'Salário', 'Aluguel', 'Supermercado',
-            'Freelance', 'Transporte', 'Restaurante',
-            'Bônus', 'Conta de Luz', 'Internet',
-            'Presente', 'Salário', 'Academia'
-        ],
-        'Valor': [
-            3000.00, 1500.00, 450.00,
-            1200.00, 120.00, 80.00,
-            500.00, 200.00, 90.00,
-            150.00, 3000.00, 120.00
-        ],
-        'Tipo': [
-            'Receita', 'Despesa', 'Despesa',
-            'Receita', 'Despesa', 'Despesa',
-            'Receita', 'Despesa', 'Despesa',
-            'Despesa', 'Receita', 'Despesa'
-        ],
-        'Categoria': [
-            'Salário', 'Moradia', 'Alimentação',
-            'Freelance', 'Transporte', 'Lazer',
-            'Bônus', 'Moradia', 'Moradia',
-            'Lazer', 'Salário', 'Saúde'
-        ]
-    }
-    st.session_state.df = pd.DataFrame(example_data)
-    st.session_state.df['Data'] = pd.to_datetime(st.session_state.df['Data'])
+    if st.session_state.df.empty:
+        example_data = {
+            'Data': [
+                datetime(2024, 1, 10), datetime(2024, 1, 15), datetime(2024, 1, 20),
+                datetime(2024, 2, 5), datetime(2024, 2, 12), datetime(2024, 2, 20),
+                datetime(2024, 3, 1), datetime(2024, 3, 10), datetime(2024, 3, 15),
+                datetime(2024, 3, 25), datetime(2024, 4, 5), datetime(2024, 4, 15)
+            ],
+            'Descrição': [
+                'Salário', 'Aluguel', 'Supermercado',
+                'Freelance', 'Transporte', 'Restaurante',
+                'Bônus', 'Conta de Luz', 'Internet',
+                'Presente', 'Salário', 'Academia'
+            ],
+            'Valor': [
+                3000.00, 1500.00, 450.00,
+                1200.00, 120.00, 80.00,
+                500.00, 200.00, 90.00,
+                150.00, 3000.00, 120.00
+            ],
+            'Tipo': [
+                'Receita', 'Despesa', 'Despesa',
+                'Receita', 'Despesa', 'Despesa',
+                'Receita', 'Despesa', 'Despesa',
+                'Despesa', 'Receita', 'Despesa'
+            ],
+            'Categoria': [
+                'Salário', 'Moradia', 'Alimentação',
+                'Freelance', 'Transporte', 'Lazer',
+                'Bônus', 'Moradia', 'Moradia',
+                'Lazer', 'Salário', 'Saúde'
+            ]
+        }
+        st.session_state.df = pd.DataFrame(example_data)
+        st.session_state.df['Data'] = pd.to_datetime(st.session_state.df['Data'])
 
 # --- Header ---
 col1, col2 = st.columns([1, 3])
 with col1:
-    st.image("https://placehold.co/150x50/4e73df/ffffff?text=Granazen", width=150) # Placeholder com cor primária
+    st.image("https://placehold.co/150x50/4e73df/ffffff?text=Granazen", width=150)
 with col2:
     st.title("Dashboard Financeiro")
 
 st.markdown("Visualize e analise suas finanças pessoais com insights poderosos")
+
+# --- Seção para Gerenciamento de Dados ---
+st.header("💾 Gerenciamento de Dados")
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("🔄 Recarregar Dados do GitHub", help="Carrega os dados mais recentes do repositório GitHub"):
+        st.session_state.df = load_data_from_github()
+        st.rerun()
+
+with col2:
+    st.markdown(get_csv_download_link(), unsafe_allow_html=True)
 
 # --- Seção 1: Gerenciar Lançamentos ---
 st.header("📝 Gerenciar Lançamentos")
@@ -504,14 +527,14 @@ with tab1:
             required_cols = ['Data', 'Descrição', 'Valor', 'Tipo', 'Categoria']
             if all(col in temp_df.columns for col in required_cols):
                 st.session_state.df = temp_df
-                # Garante que a coluna 'Data' seja datetime após o upload
                 st.session_state.df['Data'] = pd.to_datetime(st.session_state.df['Data'], errors='coerce')
                 st.session_state.df = st.session_state.df.dropna(subset=['Data'])
-                st.success("Dados carregados com sucesso!")
+                save_data_locally()
+                st.success("Dados carregados e salvos com sucesso!")
                 
                 with st.expander("Visualizar dados carregados"):
                     st.dataframe(st.session_state.df.head(), use_container_width=True)
-                st.rerun() # Recarrega para aplicar os novos dados
+                st.rerun()
             else:
                 missing_cols = [col for col in required_cols if col not in temp_df.columns]
                 st.error(f"O arquivo não contém todas as colunas necessárias. Faltando: {', '.join(missing_cols)}")
@@ -531,12 +554,12 @@ with tab2:
             valor = st.number_input("Valor (R$)*", min_value=0.01, format="%.2f", step=0.01)
             categoria = st.selectbox(
                 "Categoria*",
-                ["Moradia", "Alimentação", "Transporte", "Lazer", "Saúde", "Educação", "Outros", "Salário", "Freelance", "Bônus"] # Adicionado categorias de exemplo
+                ["Moradia", "Alimentação", "Transporte", "Lazer", "Saúde", "Educação", "Outros", "Salário", "Freelance", "Bônus"]
             )
         
         with cols[2]:
             descricao = st.text_input("Descrição*")
-            st.markdown("<div style='height: 27px;'></div>", unsafe_allow_html=True) # Espaçamento para alinhar o botão
+            st.markdown("<div style='height: 27px;'></div>", unsafe_allow_html=True)
             submitted = st.form_submit_button("💾 Salvar Transação", type="primary")
         
         if submitted:
@@ -549,9 +572,9 @@ with tab2:
                     'Categoria': categoria
                 }])
                 st.session_state.df = pd.concat([st.session_state.df, new_entry], ignore_index=True)
-                # Garante que a coluna 'Data' seja datetime após adicionar nova entrada
                 st.session_state.df['Data'] = pd.to_datetime(st.session_state.df['Data'], errors='coerce')
-                st.success("Transação adicionada com sucesso!")
+                save_data_locally()
+                st.success("Transação adicionada e dados salvos!")
                 st.rerun()
             else:
                 st.warning("Preencha todos os campos obrigatórios (*)")
@@ -569,22 +592,21 @@ with col1:
     )
 
 with col2:
-    # Define valores padrão para o date_input para evitar erro de valor vazio
     default_start_date = datetime.now().date().replace(day=1)
     default_end_date = (datetime.now().date().replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
 
     if period == "Personalizado":
         date_range = st.date_input(
             "Selecione o período",
-            value=[default_start_date, default_end_date], # Define um valor padrão
+            value=[default_start_date, default_end_date],
             label_visibility="collapsed",
             key="date_range_picker"
         )
         if len(date_range) == 2:
             start_date, end_date = date_range
-        elif len(date_range) == 1: # Se apenas uma data for selecionada, considera como período de um dia
+        elif len(date_range) == 1:
             start_date = end_date = date_range[0]
-        else: # Se nada for selecionado, usa o padrão
+        else:
             start_date = default_start_date
             end_date = default_end_date
     else:
@@ -601,34 +623,28 @@ with col2:
 with col3:
     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
     if st.button("🔄 Limpar Filtros", key="clear_filters"):
-        # Reseta para o período "Este Mês" ao limpar
         period = "Este Mês"
         start_date = datetime.now().date().replace(day=1)
         end_date = (datetime.now().date().replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-        st.session_state.period_radio = "Este Mês" # Atualiza o estado do radio button
+        st.session_state.period_radio = "Este Mês"
         st.rerun()
 
 # Filtra os dados
-df_filtered = pd.DataFrame() # Inicializa como DataFrame vazio
+df_filtered = pd.DataFrame()
 if not st.session_state.df.empty:
-    # Garante que a coluna 'Data' seja datetime antes de filtrar
     df_temp = st.session_state.df.copy()
     df_temp['Data'] = pd.to_datetime(df_temp['Data'], errors='coerce')
-    df_temp = df_temp.dropna(subset=['Data']) # Remove linhas com datas inválidas
+    df_temp = df_temp.dropna(subset=['Data'])
     
     df_filtered = df_temp[
         (df_temp['Data'].dt.date >= start_date) & 
         (df_temp['Data'].dt.date <= end_date)
     ].copy()
 
-
 # --- Cards de Métricas ---
 st.header("📊 Visão Geral")
 
 if not df_filtered.empty:
-    # Calcula o período do mês anterior para a métrica de variação
-    # O mês anterior é calculado em relação ao início do 'start_date' do filtro atual.
-    # Ex: se o filtro atual é Fev 2024, o mês anterior é Jan 2024.
     first_day_current_filter_month = start_date.replace(day=1)
     last_day_prev_filter_month = first_day_current_filter_month - timedelta(days=1)
     first_day_prev_filter_month = last_day_prev_filter_month.replace(day=1)
@@ -638,11 +654,10 @@ if not df_filtered.empty:
         first_day_prev_filter_month, last_day_prev_filter_month
     )
     
-    # Calcula variação em relação ao mês anterior
     if prev_month_saldo != 0:
         saldo_variation = ((saldo_atual - prev_month_saldo) / abs(prev_month_saldo)) * 100
     else:
-        saldo_variation = 0 # Ou np.nan se preferir não mostrar %
+        saldo_variation = 0
     
     cols = st.columns(4)
     with cols[0]:
