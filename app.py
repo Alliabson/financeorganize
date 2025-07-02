@@ -1,3 +1,4 @@
+APP streamlit:
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -294,9 +295,17 @@ def calculate_metrics(df_filtered_current_period, start_date, end_date, prev_mon
     return total_receitas, total_despesas, saldo_atual, prev_month_saldo
 
 def create_monthly_flow_chart(df):
+    if df.empty:
+        return None
+        
     df_monthly = df.copy()
     df_monthly['Mês'] = df_monthly['Data'].dt.to_period('M').astype(str)
     monthly_summary = df_monthly.groupby(['Mês', 'Tipo'])['Valor'].sum().unstack().fillna(0)
+    
+    # Garante que as colunas 'Receita' e 'Despesa' existam
+    for tipo in ['Receita', 'Despesa']:
+        if tipo not in monthly_summary.columns:
+            monthly_summary[tipo] = 0
     
     # Ordena os meses para garantir a sequência correta no gráfico
     monthly_summary.index = pd.PeriodIndex(monthly_summary.index, freq='M')
@@ -369,7 +378,6 @@ def create_expense_pie_chart(df):
         textinfo='percent+label',
         hovertemplate='<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Percentual: %{percent}<extra></extra>',
         marker=dict(line=dict(color='#fff', width=1))
-    )
     
     fig.update_layout(
         plot_bgcolor='rgba(0,0,0,0)',
@@ -384,6 +392,9 @@ def create_expense_pie_chart(df):
     return fig
 
 def create_balance_chart(df):
+    if df.empty:
+        return None
+        
     df_saldo = df.copy()
     df_saldo = df_saldo.sort_values('Data')
     df_saldo['Valor_Ajustado'] = df_saldo.apply(
@@ -693,7 +704,10 @@ if not df_filtered.empty:
     
     with tab1:
         fig1 = create_monthly_flow_chart(df_filtered)
-        st.plotly_chart(fig1, use_container_width=True)
+        if fig1:
+            st.plotly_chart(fig1, use_container_width=True)
+        else:
+            st.warning("Não há dados suficientes para exibir o gráfico de fluxo mensal.")
     
     with tab2:
         fig2 = create_expense_pie_chart(df_filtered)
@@ -704,7 +718,10 @@ if not df_filtered.empty:
     
     with tab3:
         fig3 = create_balance_chart(df_filtered)
-        st.plotly_chart(fig3, use_container_width=True)
+        if fig3:
+            st.plotly_chart(fig3, use_container_width=True)
+        else:
+            st.warning("Não há dados suficientes para exibir o gráfico de evolução do saldo.")
 
 # --- Tabela de Transações ---
 st.header("🧾 Últimas Transações")
