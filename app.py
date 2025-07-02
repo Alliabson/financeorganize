@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import matplotlib.ticker as mticker
 import calendar # Para obter o nome do mês
-import numpy as np # Adicionado para operações numéricas, se necessário
+import numpy as np # Adicionado para operações numéricas
 
 # --- Configuração da Página ---
 st.set_page_config(layout="wide", page_title="Painel Financeiro Granazen-like")
 
-# --- Funções Auxiliares de Estilo (para simular o visual do Granazen) ---
+# --- Funções Auxiliares de Estilo ---
 def apply_custom_css():
     st.markdown("""
     <style>
@@ -20,22 +20,29 @@ def apply_custom_css():
         font-family: "Inter", sans-serif; /* Fonte Inter para um visual moderno */
     }
 
+    /* Títulos principais */
+    h1, h2, h3, h4, h5, h6 {
+        color: #333;
+    }
+
     /* Estilo para os cards de métricas (Receitas, Despesas, Saldo) */
     .metric-card {
         background-color: white;
         padding: 20px;
         border-radius: 10px; /* Cantos arredondados */
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra suave para profundidade */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08); /* Sombra suave e discreta */
         text-align: left;
         height: 100%; /* Garante que os cards tenham a mesma altura */
         display: flex;
         flex-direction: column;
         justify-content: space-between;
+        border: 1px solid #e0e0e0; /* Borda sutil */
     }
     .metric-card h3 {
         margin-top: 0;
-        color: #333;
-        font-size: 1.1em;
+        color: #666; /* Título da métrica mais suave */
+        font-size: 1em;
+        font-weight: normal;
     }
     .metric-card .stMetric {
         padding: 0;
@@ -45,7 +52,7 @@ def apply_custom_css():
         font-size: 0.9em;
     }
     .metric-card .stMetric > div:nth-child(2) { /* Valor da métrica */
-        font-size: 1.8em;
+        font-size: 1.6em; /* Um pouco menor para caber melhor */
         font-weight: bold;
         color: #333;
     }
@@ -57,10 +64,11 @@ def apply_custom_css():
     /* Estilo para as seções de conteúdo (tabelas, gráficos, formulários) */
     .content-section {
         background-color: white;
-        padding: 20px;
+        padding: 25px; /* Mais padding para espaçamento interno */
         border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Sombra um pouco mais visível para seções */
         margin-bottom: 20px;
+        border: 1px solid #e0e0e0; /* Borda sutil */
     }
 
     /* Estilo para campos de input (texto, número, data) e selectbox */
@@ -72,7 +80,7 @@ def apply_custom_css():
         border: 1px solid #d0d0d0; /* Borda cinza suave */
         padding: 10px 12px;
         background-color: #ffffff; /* Fundo branco puro */
-        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05); /* Sombra interna sutil */
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03); /* Sombra interna mais sutil */
         transition: all 0.2s ease-in-out; /* Transição suave para o foco */
     }
 
@@ -82,7 +90,7 @@ def apply_custom_css():
     .stDateInput > div > div > input:focus,
     .stSelectbox > div > div > div > div:focus {
         border-color: #28a745; /* Borda verde no foco */
-        box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2); /* Sombra de foco verde suave */
+        box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.15); /* Sombra de foco verde mais suave */
         outline: none; /* Remove outline padrão do navegador */
     }
 
@@ -101,27 +109,29 @@ def apply_custom_css():
         padding: 10px 20px;
         font-weight: bold;
         transition: all 0.2s ease-in-out; /* Transição suave */
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15); /* Sombra mais pronunciada */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Sombra mais sutil */
     }
     .stButton > button:hover {
         background-color: #218838; /* Verde mais escuro no hover */
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Sombra maior no hover */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Sombra maior no hover */
     }
     .stButton > button:focus {
-        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.5); /* Sombra de foco verde */
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.4); /* Sombra de foco verde */
         outline: none;
     }
 
     /* Estilo para botões secundários (ex: "Essa semana", "Esse mês", "Hoje", "Limpar") */
     .stButton > button[data-testid*="stButton-secondary"] {
-        background-color: #e9ecef; /* Cinza claro */
+        background-color: #f8f9fa; /* Cinza muito claro */
         color: #495057; /* Texto cinza escuro */
-        border: 1px solid #ced4da; /* Borda cinza */
+        border: 1px solid #e0e0e0; /* Borda cinza */
         box-shadow: none; /* Remove sombra */
+        padding: 8px 15px; /* Padding menor */
+        font-weight: normal;
     }
     .stButton > button[data-testid*="stButton-secondary"]:hover {
-        background-color: #dee2e6; /* Cinza um pouco mais escuro no hover */
-        border-color: #adb5bd;
+        background-color: #e2e6ea; /* Cinza um pouco mais escuro no hover */
+        border-color: #d0d0d0;
         color: #333;
     }
 
@@ -151,6 +161,44 @@ def apply_custom_css():
         padding: 20px;
         border-radius: 0 0 10px 10px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Estilo para o container dos botões de período */
+    .period-buttons-container {
+        display: flex;
+        gap: 10px; /* Espaçamento entre os botões */
+        align-items: center;
+        flex-wrap: wrap; /* Permite quebrar linha em telas menores */
+    }
+
+    /* Ajuste para o st.dataframe */
+    .stDataFrame {
+        border-radius: 8px;
+        overflow: hidden; /* Garante que o conteúdo não vaze das bordas arredondadas */
+    }
+    .stDataFrame table {
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 8px;
+    }
+    .stDataFrame thead th {
+        background-color: #f8f9fa; /* Fundo do cabeçalho da tabela */
+        color: #495057;
+        font-weight: bold;
+        padding: 12px 15px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .stDataFrame tbody tr {
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .stDataFrame tbody tr:last-child {
+        border-bottom: none;
+    }
+    .stDataFrame tbody td {
+        padding: 10px 15px;
+    }
+    .stDataFrame tbody tr:hover {
+        background-color: #f2f2f2; /* Efeito hover nas linhas da tabela */
     }
     </style>
     """, unsafe_allow_html=True)
@@ -187,11 +235,11 @@ if 'df' not in st.session_state:
     # Adiciona alguns dados de exemplo se o DataFrame estiver vazio
     if st.session_state.df.empty:
         example_data = {
-            'Data': [datetime(2024, 1, 10), datetime(2024, 1, 15), datetime(2024, 2, 5), datetime(2024, 2, 12), datetime(2024, 2, 20), datetime(2024, 3, 1), datetime(2024, 3, 10)],
-            'Descrição': ['Salário', 'Aluguel', 'Supermercado', 'Transporte', 'Restaurante', 'Bônus', 'Conta de Luz'],
-            'Valor': [3000.00, 1500.00, 450.00, 120.00, 80.00, 500.00, 200.00],
-            'Tipo': ['Receita', 'Despesa', 'Despesa', 'Despesa', 'Despesa', 'Receita', 'Despesa'],
-            'Categoria': ['Salário', 'Moradia', 'Alimentação', 'Transporte', 'Lazer', 'Bônus', 'Moradia']
+            'Data': [datetime(2024, 1, 10), datetime(2024, 1, 15), datetime(2024, 2, 5), datetime(2024, 2, 12), datetime(2024, 2, 20), datetime(2024, 3, 1), datetime(2024, 3, 10), datetime(2024, 3, 15)],
+            'Descrição': ['Salário', 'Aluguel', 'Supermercado', 'Transporte', 'Restaurante', 'Bônus', 'Conta de Luz', 'Internet'],
+            'Valor': [3000.00, 1500.00, 450.00, 120.00, 80.00, 500.00, 200.00, 90.00],
+            'Tipo': ['Receita', 'Despesa', 'Despesa', 'Despesa', 'Despesa', 'Receita', 'Despesa', 'Despesa'],
+            'Categoria': ['Salário', 'Moradia', 'Alimentação', 'Transporte', 'Lazer', 'Bônus', 'Moradia', 'Moradia']
         }
         st.session_state.df = pd.DataFrame(example_data)
         st.session_state.df['Data'] = pd.to_datetime(st.session_state.df['Data']) # Garante que a coluna Data seja datetime
@@ -210,7 +258,7 @@ with tab1:
             temp_df = pd.read_csv(uploaded_file)
             st.success("Arquivo CSV carregado com sucesso!")
             st.write("Prévia dos dados carregados:")
-            st.dataframe(temp_df.head())
+            st.dataframe(temp_df.head(), use_container_width=True)
             st.session_state.df = temp_df # Atualiza o DataFrame na sessão
             st.rerun() # Recarrega para aplicar os novos dados
         except Exception as e:
@@ -266,64 +314,67 @@ if not df.empty:
         df = df[df['Tipo'].isin(['Receita', 'Despesa'])]
         df = df.sort_values(by='Data').reset_index(drop=True)
 
-# --- Seleção de Período ---
+# --- Seleção de Período (Ajustado para o layout da imagem) ---
 st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-st.subheader("Seleção de Período")
+col_month_nav, col_period_selection = st.columns([1, 3])
 
-col_nav_month, col_period_buttons, col_date_range, col_clear = st.columns([1, 2, 3, 1])
+with col_month_nav:
+    # Simulação de navegação por mês (setas)
+    st.markdown("### ← Fevereiro →") # Hardcoded para simular, precisaria de lógica real
 
-with col_nav_month:
-    current_month_name = calendar.month_name[datetime.now().month]
-    st.markdown(f"### ← {current_month_name} →") # Simulação de navegação por mês
+with col_period_selection:
+    col_buttons, col_date_picker, col_clear_button = st.columns([2, 3, 1])
+    with col_buttons:
+        st.markdown("<div class='period-buttons-container'>", unsafe_allow_html=True)
+        if st.button("Essa semana", key="btn_semana"):
+            today = datetime.now().date()
+            start_date = today - timedelta(days=today.weekday()) # Segunda-feira
+            end_date = start_date + timedelta(days=6) # Domingo
+            st.session_state.start_date = start_date
+            st.session_state.end_date = end_date
+            st.rerun()
+        if st.button("Esse mês", key="btn_mes"):
+            today = datetime.now().date()
+            start_date = today.replace(day=1)
+            end_date = (today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) # Último dia do mês
+            st.session_state.start_date = start_date
+            st.session_state.end_date = end_date
+            st.rerun()
+        if st.button("Hoje", key="btn_hoje"):
+            today = datetime.now().date()
+            st.session_state.start_date = today
+            st.session_state.end_date = today
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
-with col_period_buttons:
-    if st.button("Essa semana"):
-        today = datetime.now().date()
-        start_date = today - timedelta(days=today.weekday()) # Segunda-feira
-        end_date = start_date + timedelta(days=6) # Domingo
-        st.session_state.start_date = start_date
-        st.session_state.end_date = end_date
-        st.rerun()
-    if st.button("Esse mês"):
-        today = datetime.now().date()
-        start_date = today.replace(day=1)
-        end_date = (today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) # Último dia do mês
-        st.session_state.start_date = start_date
-        st.session_state.end_date = end_date
-        st.rerun()
-    if st.button("Hoje"):
-        today = datetime.now().date()
-        st.session_state.start_date = today
-        st.session_state.end_date = today
-        st.rerun()
+    with col_date_picker:
+        # Define o período padrão como o mês atual se não houver seleção prévia
+        if 'start_date' not in st.session_state or 'end_date' not in st.session_state:
+            today = datetime.now().date()
+            st.session_state.start_date = today.replace(day=1)
+            st.session_state.end_date = (today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
 
-with col_date_range:
-    # Define o período padrão como o mês atual se não houver seleção prévia
-    if 'start_date' not in st.session_state or 'end_date' not in st.session_state:
-        today = datetime.now().date()
-        st.session_state.start_date = today.replace(day=1)
-        st.session_state.end_date = (today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        selected_date_range = st.date_input(
+            "Período Personalizado",
+            value=(st.session_state.start_date, st.session_state.end_date),
+            key="date_range_picker",
+            label_visibility="collapsed" # Esconde o label para um visual mais limpo
+        )
+        if len(selected_date_range) == 2:
+            st.session_state.start_date = selected_date_range[0]
+            st.session_state.end_date = selected_date_range[1]
+        elif len(selected_date_range) == 1:
+            st.session_state.start_date = selected_date_range[0]
+            st.session_state.end_date = selected_date_range[0]
 
-    selected_date_range = st.date_input(
-        "Período Personalizado",
-        value=(st.session_state.start_date, st.session_state.end_date),
-        key="date_range_picker"
-    )
-    if len(selected_date_range) == 2:
-        st.session_state.start_date = selected_date_range[0]
-        st.session_state.end_date = selected_date_range[1]
-    elif len(selected_date_range) == 1: # Caso o usuário selecione apenas uma data
-        st.session_state.start_date = selected_date_range[0]
-        st.session_state.end_date = selected_date_range[0]
-
-
-with col_clear:
-    if st.button("Limpar"):
-        if 'start_date' in st.session_state:
-            del st.session_state.start_date
-        if 'end_date' in st.session_state:
-            del st.session_state.end_date
-        st.rerun()
+    with col_clear_button:
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Espaçamento para alinhar o botão
+        if st.button("Limpar", key="btn_limpar"):
+            if 'start_date' in st.session_state:
+                del st.session_state.start_date
+            if 'end_date' in st.session_state:
+                del st.session_state.end_date
+            st.rerun()
 
 st.markdown("</div>", unsafe_allow_html=True) # Fecha content-section para seleção de período
 
@@ -343,26 +394,25 @@ first_day_current_month = today.replace(day=1)
 last_day_prev_month = first_day_current_month - timedelta(days=1)
 first_day_prev_month = last_day_prev_month.replace(day=1)
 
-# --- Cards de Métricas ---
+# --- Cards de Métricas (Ajustado para o layout da imagem) ---
 st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-st.subheader("Resumo Financeiro")
-col1, col2, col3, col4 = st.columns(4)
+col_saldo, col_receitas, col_despesas, col_investimentos = st.columns(4) # Adicionado col_investimentos para layout
 
 if not df.empty and not df_filtered.empty:
     total_receitas, total_despesas, saldo_atual, prev_month_saldo = calculate_metrics(
         df_filtered, st.session_state.start_date, st.session_state.end_date, first_day_prev_month, last_day_prev_month
     )
 
-    with col1:
+    with col_saldo:
         st.markdown(f"""
         <div class="metric-card">
-            <h3>Mês Anterior ({calendar.month_name[first_day_prev_month.month].capitalize()})</h3>
-            <div style="font-size: 1.8em; font-weight: bold; color: #333;">R$ {prev_month_saldo:,.2f}</div>
-            <div style="font-size: 0.8em; color: #888;">1 {calendar.month_abbr[first_day_prev_month.month]}. até {last_day_prev_month.day} {calendar.month_abbr[last_day_prev_month.month]}.</div>
+            <h3>Saldo</h3>
+            <div style="font-size: 1.8em; font-weight: bold; color: {'#28a745' if saldo_atual >= 0 else '#dc3545'};">R$ {saldo_atual:,.2f}</div>
+            <div style="font-size: 0.8em; color: #888;">{st.session_state.start_date.day} {calendar.month_abbr[st.session_state.start_date.month]}. até {st.session_state.end_date.day} {calendar.month_abbr[st.session_state.end_date.month]}.</div>
         </div>
         """, unsafe_allow_html=True)
 
-    with col2:
+    with col_receitas:
         st.markdown(f"""
         <div class="metric-card">
             <h3>Receitas</h3>
@@ -371,7 +421,7 @@ if not df.empty and not df_filtered.empty:
         </div>
         """, unsafe_allow_html=True)
 
-    with col3:
+    with col_despesas:
         st.markdown(f"""
         <div class="metric-card">
             <h3>Despesas</h3>
@@ -380,12 +430,13 @@ if not df.empty and not df_filtered.empty:
         </div>
         """, unsafe_allow_html=True)
 
-    with col4:
+    with col_investimentos:
+        # Este card é um placeholder, pois não temos dados de investimento.
         st.markdown(f"""
         <div class="metric-card">
-            <h3>Saldo Atual</h3>
-            <div style="font-size: 1.8em; font-weight: bold; color: {'#28a745' if saldo_atual >= 0 else '#dc3545'};">R$ {saldo_atual:,.2f}</div>
-            <div style="font-size: 0.8em; color: #888;">{st.session_state.start_date.day} {calendar.month_abbr[st.session_state.start_date.month]}. até {st.session_state.end_date.day} {calendar.month_abbr[st.session_state.end_date.month]}.</div>
+            <h3>Investimentos</h3>
+            <div style="font-size: 1.8em; font-weight: bold; color: #007bff;">R$ 0,00</div>
+            <div style="font-size: 0.8em; color: #888;">(Dados não disponíveis)</div>
         </div>
         """, unsafe_allow_html=True)
 else:
@@ -394,20 +445,91 @@ else:
 st.markdown("</div>", unsafe_allow_html=True) # Fecha content-section para métricas
 
 
-# --- Layout principal: Últimas Transações e Categorias/Gráfico ---
-main_col1, main_col2 = st.columns([2, 1])
+# --- Layout principal: Entradas/Saídas Mensal e Resumo das Despesas ---
+st.markdown("<div class='content-section'>", unsafe_allow_html=True)
+col_monthly_chart, col_expense_summary = st.columns([2, 1])
 
-with main_col1:
-    st.markdown("<div class='content-section'>", unsafe_allow_html=True)
+with col_monthly_chart:
+    st.subheader("Entradas e Saídas Mensal")
+    if not df_filtered.empty:
+        df_filtered['AnoMes'] = df_filtered['Data'].dt.to_period('M').astype(str)
+        df_monthly_summary = df_filtered.groupby(['AnoMes', 'Tipo'])['Valor'].sum().unstack(fill_value=0).reset_index()
+        df_monthly_summary.columns.name = None # Remove o nome do índice da coluna
+        
+        if 'Receita' not in df_monthly_summary.columns:
+            df_monthly_summary['Receita'] = 0
+        if 'Despesa' not in df_monthly_summary.columns:
+            df_monthly_summary['Despesa'] = 0
+
+        df_monthly_summary['AnoMes_Sort'] = pd.to_datetime(df_monthly_summary['AnoMes'])
+        df_monthly_summary = df_monthly_summary.sort_values(by='AnoMes_Sort')
+
+        fig_monthly_flow, ax_monthly_flow = plt.subplots(figsize=(10, 5)) # Ajuste de tamanho
+        
+        bar_width = 0.35
+        r_index = np.arange(len(df_monthly_summary['AnoMes']))
+        
+        ax_monthly_flow.bar(r_index - bar_width/2, df_monthly_summary['Receita'], color='#28a745', width=bar_width, label='Receita')
+        ax_monthly_flow.bar(r_index + bar_width/2, df_monthly_summary['Despesa'], color='#dc3545', width=bar_width, label='Despesa')
+
+        ax_monthly_flow.set_xlabel('Mês/Ano', fontweight='bold')
+        ax_monthly_flow.set_ylabel('Valor (R$)', fontweight='bold')
+        ax_monthly_flow.set_title('Entradas e Saídas Mensais')
+        ax_monthly_flow.set_xticks(r_index)
+        ax_monthly_flow.set_xticklabels(df_monthly_summary['AnoMes'], rotation=45, ha='right')
+        ax_monthly_flow.legend()
+        ax_monthly_flow.grid(axis='y', linestyle='--', alpha=0.7)
+        formatter = mticker.FormatStrFormatter('R$ %.2f')
+        ax_monthly_flow.yaxis.set_major_formatter(formatter)
+        plt.tight_layout()
+        st.pyplot(fig_monthly_flow)
+        plt.close(fig_monthly_flow)
+    else:
+        st.info("Nenhum dado disponível para gerar o gráfico de entradas e saídas mensais.")
+
+with col_expense_summary:
+    st.subheader("Resumo das Despesas")
+    if not df_filtered.empty:
+        df_despesas_summary = df_filtered[df_filtered['Tipo'] == 'Despesa'].copy()
+        if not df_despesas_summary.empty:
+            expense_summary = df_despesas_summary.groupby('Categoria')['Valor'].sum().reset_index()
+            expense_summary.columns = ['Categoria', 'Gastos']
+            expense_summary = expense_summary.sort_values(by='Gastos', ascending=False)
+
+            total_expenses_period = expense_summary['Gastos'].sum()
+            total_income_period = df_filtered[df_filtered['Tipo'] == 'Receita']['Valor'].sum()
+
+            if total_expenses_period > 0:
+                expense_summary['% s Despesas'] = (expense_summary['Gastos'] / total_expenses_period * 100).map('{:.2f}%'.format)
+            else:
+                expense_summary['% s Despesas'] = '0.00%'
+
+            if total_income_period > 0:
+                expense_summary['% s Receita'] = (expense_summary['Gastos'] / total_income_period * 100).map('{:.2f}%'.format)
+            else:
+                expense_summary['% s Receita'] = '0.00%'
+
+            st.dataframe(expense_summary, use_container_width=True)
+        else:
+            st.info("Nenhuma despesa para resumir neste período.")
+    else:
+        st.info("Nenhum dado disponível para gerar o resumo das despesas.")
+
+st.markdown("</div>", unsafe_allow_html=True) # Fecha content-section para Entradas/Saídas e Resumo
+
+# --- Layout: Últimas Transações e Gastos por Tipo de Despesa ---
+st.markdown("<div class='content-section'>", unsafe_allow_html=True)
+col_transactions, col_expense_type_chart = st.columns([2, 1])
+
+with col_transactions:
     st.subheader("Últimas Transações")
     st.markdown("Verifique as últimas transações")
 
-    # Tabs para filtrar transações
     tab_all, tab_expenses, tab_income = st.tabs(["Todas", "Despesas", "Receitas"])
 
-    search_query = st.text_input("Pesquisar receitas ou gastos", "")
+    search_query = st.text_input("Pesquisar receitas ou gastos", key="search_transactions")
 
-    df_display = df_filtered.copy() # Usar uma cópia para a exibição
+    df_display = df_filtered.copy()
 
     if search_query:
         df_display = df_display[
@@ -422,59 +544,50 @@ with main_col1:
     with tab_income:
         st.dataframe(df_display[df_display['Tipo'] == 'Receita'][['Data', 'Descrição', 'Valor', 'Categoria']].tail(10), use_container_width=True)
 
-    st.markdown("</div>", unsafe_allow_html=True) # Fecha content-section para transações
+with col_expense_type_chart:
+    st.subheader("Gastos por Tipo de Despesa")
+    st.info("Para esta análise, as despesas são categorizadas como 'Fixa' ou 'Variável' com base em algumas categorias de exemplo. Para uma classificação precisa, adicione um campo 'Tipo de Gasto' aos seus dados.")
+    
+    if not df_filtered.empty:
+        df_despesas_type = df_filtered[df_filtered['Tipo'] == 'Despesa'].copy()
+        
+        # Simulação de classificação Fixa/Variável para demonstração
+        # Em um app real, você teria uma coluna 'Tipo de Gasto' no seu CSV/input
+        fixed_categories = ['Moradia', 'Internet', 'Seguros', 'Assinaturas']
+        df_despesas_type['Tipo_Gasto'] = df_despesas_type['Categoria'].apply(
+            lambda x: 'Fixa' if x in fixed_categories else 'Variável'
+        )
 
-with main_col2:
-    st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-    st.subheader("Categorias")
+        if not df_despesas_type.empty:
+            gastos_por_tipo = df_despesas_type.groupby('Tipo_Gasto')['Valor'].sum()
+            
+            if 'Fixa' not in gastos_por_tipo.index:
+                gastos_por_tipo['Fixa'] = 0
+            if 'Variável' not in gastos_por_tipo.index:
+                gastos_por_tipo['Variável'] = 0
 
-    tab_cat_despesas, tab_cat_receitas = st.tabs(["Despesas", "Receitas"])
-
-    with tab_cat_despesas:
-        st.markdown(f"Gráfico por categoria ({st.session_state.start_date.day} {calendar.month_abbr[st.session_state.start_date.month]}. - {st.session_state.end_date.day} {calendar.month_abbr[st.session_state.end_date.month]}. )")
-        df_despesas_filtered = df_filtered[df_filtered['Tipo'] == 'Despesa']
-        if not df_despesas_filtered.empty:
-            despesas_por_categoria = df_despesas_filtered.groupby('Categoria')['Valor'].sum()
-            fig_despesas_cat, ax_despesas_cat = plt.subplots(figsize=(6, 6)) # Tamanho ajustado para coluna
-            ax_despesas_cat.pie(despesas_por_categoria, labels=despesas_por_categoria.index,
+            fig_expense_type, ax_expense_type = plt.subplots(figsize=(6, 6))
+            ax_expense_type.pie(gastos_por_tipo, labels=gastos_por_tipo.index,
                                 autopct='%1.1f%%', startangle=90, wedgeprops={'width': 0.4})
-            ax_despesas_cat.set_title('Distribuição das Despesas por Categoria')
-            ax_despesas_cat.axis('equal')
-            st.pyplot(fig_despesas_cat)
-            plt.close(fig_despesas_cat)
+            ax_expense_type.set_title('Distribuição de Gastos (Fixos vs. Variáveis)')
+            ax_expense_type.axis('equal')
+            st.pyplot(fig_expense_type)
+            plt.close(fig_expense_type)
         else:
-            st.info("Nenhuma despesa encontrada para gerar o gráfico de pizza neste período.")
-
-    with tab_cat_receitas:
-        st.markdown(f"Gráfico por categoria ({st.session_state.start_date.day} {calendar.month_abbr[st.session_state.start_date.month]}. - {st.session_state.end_date.day} {calendar.month_abbr[st.session_state.end_date.month]}. )")
-        df_receitas_filtered = df_filtered[df_filtered['Tipo'] == 'Receita']
-        if not df_receitas_filtered.empty:
-            receitas_por_categoria = df_receitas_filtered.groupby('Categoria')['Valor'].sum()
-            fig_receitas_cat, ax_receitas_cat = plt.subplots(figsize=(6, 6)) # Tamanho ajustado para coluna
-            ax_receitas_cat.pie(receitas_por_categoria, labels=receitas_por_categoria.index,
-                                autopct='%1.1f%%', startangle=90, wedgeprops={'width': 0.4})
-            ax_receitas_cat.set_title('Distribuição das Receitas por Categoria')
-            ax_receitas_cat.axis('equal')
-            st.pyplot(fig_receitas_cat)
-            plt.close(fig_receitas_cat)
-        else:
-            st.info("Nenhuma receita encontrada para gerar o gráfico de pizza neste período.")
-
-    # --- Top Categorias de Despesas ---
-    st.subheader("Top 5 Categorias de Despesas")
-    if not df_despesas_filtered.empty:
-        top_despesas = df_despesas_filtered.groupby('Categoria')['Valor'].sum().nlargest(5)
-        if not top_despesas.empty:
-            for categoria, valor in top_despesas.items():
-                st.markdown(f"- **{categoria}**: R$ {valor:,.2f}")
-        else:
-            st.info("Não há despesas suficientes para listar as top categorias.")
+            st.info("Nenhuma despesa encontrada para gerar o gráfico de tipo de despesa neste período.")
     else:
-        st.info("Nenhuma despesa para analisar as top categorias.")
+        st.info("Nenhum dado disponível para gerar o gráfico de tipo de despesa.")
 
-    st.markdown("</div>", unsafe_allow_html=True) # Fecha content-section para categorias/gráfico
+st.markdown("</div>", unsafe_allow_html=True) # Fecha content-section para Transações e Tipo de Despesa
 
-# --- Gráfico de Saldo Acumulado (Mantido, mas fora do layout principal para melhor visualização) ---
+
+# --- Gráficos de Pizza de Categorias (Movidos para uma seção separada ou combinados) ---
+# Os gráficos de pizza de despesas e receitas por categoria já estão na coluna da direita,
+# dentro da seção "Categorias". Não é necessário duplicá-los aqui.
+# O gráfico de Saldo Acumulado e Receitas/Despesas Mensais Detalhadas
+# foram movidos para seções separadas abaixo para melhor organização.
+
+# --- Gráfico de Saldo Acumulado ---
 st.markdown("<div class='content-section'>", unsafe_allow_html=True)
 st.subheader("Evolução do Saldo Acumulado ao Longo do Tempo")
 if not df_filtered.empty:
@@ -495,89 +608,21 @@ else:
 st.markdown("</div>", unsafe_allow_html=True)
 
 
-# --- Novo Gráfico: Saldo Mensal (Receitas - Despesas) ---
-st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-st.subheader("Saldo Mensal (Receitas - Despesas)")
-if not df_filtered.empty:
-    # Garante que 'AnoMes' e 'Valor_Ajustado' estejam disponíveis
-    df_filtered['AnoMes'] = df_filtered['Data'].dt.to_period('M').astype(str)
-    monthly_net_balance = df_filtered.groupby('AnoMes')['Valor_Ajustado'].sum().reset_index()
-    monthly_net_balance.columns = ['AnoMes', 'Saldo_Mensal']
-    
-    # Ordena por data para garantir a correta visualização da série temporal
-    monthly_net_balance['AnoMes_Sort'] = pd.to_datetime(monthly_net_balance['AnoMes'])
-    monthly_net_balance = monthly_net_balance.sort_values(by='AnoMes_Sort')
-
-    fig_net_balance, ax_net_balance = plt.subplots(figsize=(12, 6))
-    ax_net_balance.bar(monthly_net_balance['AnoMes'], monthly_net_balance['Saldo_Mensal'],
-                       color=['g' if x >= 0 else 'r' for x in monthly_net_balance['Saldo_Mensal']],
-                       edgecolor='grey')
-    ax_net_balance.set_title('Saldo Mensal (Receitas - Despesas)')
-    ax_net_balance.set_xlabel('Mês/Ano')
-    ax_net_balance.set_ylabel('Saldo (R$)')
-    ax_net_balance.grid(axis='y', linestyle='--', alpha=0.7)
-    formatter = mticker.FormatStrFormatter('R$ %.2f')
-    ax_net_balance.yaxis.set_major_formatter(formatter)
-    plt.xticks(rotation=45, ha='right')
-    plt.tight_layout()
-    st.pyplot(fig_net_balance)
-    plt.close(fig_net_balance)
-else:
-    st.info("Nenhum dado disponível para o período selecionado para gerar o gráfico de saldo mensal.")
-st.markdown("</div>", unsafe_allow_html=True)
-
-
-# --- Gráfico de Barras Mensal/Anual de Receitas e Despesas (Mantido) ---
-st.markdown("<div class='content-section'>", unsafe_allow_html=True)
-st.subheader("Receitas e Despesas Mensais Detalhadas")
-if not df_filtered.empty:
-    df_filtered['AnoMes'] = df_filtered['Data'].dt.to_period('M').astype(str)
-    df_grouped = df_filtered.groupby(['AnoMes', 'Tipo'])['Valor'].sum().unstack(fill_value=0).reset_index()
-    df_grouped.columns.name = None
-    
-    if 'Receita' not in df_grouped.columns:
-        df_grouped['Receita'] = 0
-    if 'Despesa' not in df_grouped.columns:
-        df_grouped['Despesa'] = 0
-
-    df_grouped['AnoMes_Sort'] = pd.to_datetime(df_grouped['AnoMes'])
-    df_grouped = df_grouped.sort_values(by='AnoMes_Sort')
-
-    fig_bar, ax_bar = plt.subplots(figsize=(12, 6))
-    
-    bar_width = 0.35
-    r1 = range(len(df_grouped['AnoMes']))
-    r2 = [x + bar_width for x in r1]
-
-    ax_bar.bar(r1, df_grouped['Receita'], color='g', width=bar_width, edgecolor='grey', label='Receita')
-    ax_bar.bar(r2, df_grouped['Despesa'], color='r', width=bar_width, edgecolor='grey', label='Despesa')
-
-    ax_bar.set_xlabel('Mês/Ano', fontweight='bold')
-    ax_bar.set_ylabel('Valor (R$)', fontweight='bold')
-    ax_bar.set_title('Receitas e Despesas Mensais Detalhadas')
-    ax_bar.set_xticks([r + bar_width/2 for r in range(len(df_grouped['AnoMes']))])
-    ax_bar.set_xticklabels(df_grouped['AnoMes'], rotation=45, ha='right')
-    ax_bar.legend()
-    ax_bar.grid(axis='y', linestyle='--', alpha=0.7)
-    formatter = mticker.FormatStrFormatter('R$ %.2f')
-    ax_bar.yaxis.set_major_formatter(formatter)
-    plt.tight_layout()
-    st.pyplot(fig_bar)
-    plt.close(fig_bar)
-else:
-    st.info("Nenhum dado disponível para o período selecionado para gerar o gráfico de barras.")
-st.markdown("</div>", unsafe_allow_html=True)
-
-
 # --- Estratégias para Melhorar o Rendimento Mensal ---
 st.markdown("<div class='content-section'>", unsafe_allow_html=True)
 st.header("6. Estratégias para Melhorar o Rendimento Mensal")
 if not df_filtered.empty:
+    # Recalcula top_despesas para garantir que esteja disponível aqui
+    df_despesas_filtered = df_filtered[df_filtered['Tipo'] == 'Despesa']
+    top_despesas = pd.Series() # Inicializa como série vazia
+    if not df_despesas_filtered.empty:
+        top_despesas = df_despesas_filtered.groupby('Categoria')['Valor'].sum().nlargest(5)
+
     if saldo_atual < 0:
         st.markdown(f"**Seu saldo atual é negativo (R$ {saldo_atual:,.2f}) neste período.** É crucial analisar onde o dinheiro está indo.")
         st.markdown("### Foco Principal: Redução de Despesas")
         st.markdown("- **Revise suas Top Despesas:** As categorias que mais consomem seu dinheiro são:")
-        if 'top_despesas' in locals() and not top_despesas.empty:
+        if not top_despesas.empty:
             for categoria, valor in top_despesas.items():
                 st.markdown(f"  - **{categoria}**: R$ {valor:,.2f}")
             st.markdown(f"Considere onde você pode cortar ou reduzir gastos nessas áreas. Pequenas mudanças diárias podem gerar grandes economias.")
@@ -590,7 +635,7 @@ if not df_filtered.empty:
         st.markdown(f"**Seu saldo atual é positivo (R$ {saldo_atual:,.2f}), o que é ótimo!** No entanto, suas despesas representam uma parcela significativa de suas receitas.")
         st.markdown("### Foco Principal: Otimização de Gastos e Poupança")
         st.markdown("- **Onde você pode otimizar?** As categorias com maior despesa são:")
-        if 'top_despesas' in locals() and not top_despesas.empty:
+        if not top_despesas.empty:
             for categoria, valor in top_despesas.items():
                 st.markdown(f"  - **{categoria}**: R$ {valor:,.2f}")
             st.markdown(f"Mesmo com saldo positivo, otimizar gastos nessas áreas pode liberar mais dinheiro para poupança e investimentos.")
@@ -602,7 +647,7 @@ if not df_filtered.empty:
         st.markdown(f"**Parabéns! Seu saldo atual é saudável (R$ {saldo_atual:,.2f}).** Você está no caminho certo para uma boa saúde financeira.")
         st.markdown("### Foco Principal: Crescimento e Investimento")
         st.markdown("- **Explore novas fontes de receita:** Considere um trabalho extra, venda de itens não utilizados, ou monetize um hobby.")
-        st.markdown("- **Invista seu dinheiro:** Com um saldo positivo, é o momento de fazer seu dinheiro trabalhar para você. Pesquise opções de investimento (renda fixa, fundos, ações) que se alinhem aos seus objetivos.")
+        st.markdown("- **Invista seu dinheiro:** Com um saldo positivo, é o momento de fazer seu dinheiro trabalhar para você. Pesquise opções de investimento (renda fixa, fundos, ações) que se alinham aos seus objetivos.")
         st.markdown("- **Educação financeira:** Continue aprendendo sobre finanças pessoais e investimentos para tomar decisões mais informadas.")
 
     st.markdown("---")
