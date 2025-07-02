@@ -239,9 +239,10 @@ def calculate_metrics(df_filtered, start_date, end_date, prev_month_start, prev_
     saldo_atual = total_receitas - total_despesas
 
     # Métricas para o mês anterior
+    # Acessa .dt.date para garantir que a comparação seja entre objetos date
     df_prev_month = st.session_state.df[
-        (st.session_state.df['Data'] >= prev_month_start) & 
-        (st.session_state.df['Data'] <= prev_month_end)
+        (st.session_state.df['Data'].dt.date >= prev_month_start) & 
+        (st.session_state.df['Data'].dt.date <= prev_month_end)
     ]
     prev_month_receitas = df_prev_month[df_prev_month['Tipo'] == 'Receita']['Valor'].sum()
     prev_month_despesas = df_prev_month[df_prev_month['Tipo'] == 'Despesa']['Valor'].sum()
