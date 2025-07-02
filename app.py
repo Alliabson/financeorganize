@@ -363,7 +363,7 @@ def create_expense_pie_chart(df):
         textinfo='percent+label',
         hovertemplate='<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Percentual: %{percent}<extra></extra>',
         marker=dict(line=dict(color='#fff', width=1))
-    
+    )
     fig.update_layout(
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
