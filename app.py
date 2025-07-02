@@ -13,19 +13,19 @@ st.set_page_config(layout="wide", page_title="Painel Financeiro Granazen-like")
 def apply_custom_css():
     st.markdown("""
     <style>
-    /* Estilo geral */
+    /* Estilo geral do aplicativo */
     .stApp {
         background-color: #f0f2f6; /* Cor de fundo clara */
         color: #333; /* Cor do texto padrão */
-        font-family: "Inter", sans-serif; /* Fonte Inter */
+        font-family: "Inter", sans-serif; /* Fonte Inter para um visual moderno */
     }
 
-    /* Cards de Métricas */
+    /* Estilo para os cards de métricas (Receitas, Despesas, Saldo) */
     .metric-card {
         background-color: white;
         padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border-radius: 10px; /* Cantos arredondados */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra suave para profundidade */
         text-align: left;
         height: 100%; /* Garante que os cards tenham a mesma altura */
         display: flex;
@@ -54,7 +54,7 @@ def apply_custom_css():
         color: #888;
     }
 
-    /* Seções de Conteúdo (Tabela, Gráficos, Formulários) */
+    /* Estilo para as seções de conteúdo (tabelas, gráficos, formulários) */
     .content-section {
         background-color: white;
         padding: 20px;
@@ -68,59 +68,60 @@ def apply_custom_css():
     .stNumberInput > div > div > input,
     .stDateInput > div > div > input,
     .stSelectbox > div > div > div > div {
-        border-radius: 8px;
-        border: 1px solid #e0e0e0; /* Borda suave */
+        border-radius: 8px; /* Cantos arredondados */
+        border: 1px solid #d0d0d0; /* Borda cinza suave */
         padding: 10px 12px;
-        background-color: #fcfcfc; /* Fundo levemente diferente */
-        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05); /* Sombra interna sutil */
+        background-color: #ffffff; /* Fundo branco puro */
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05); /* Sombra interna sutil */
+        transition: all 0.2s ease-in-out; /* Transição suave para o foco */
     }
 
+    /* Estilo de foco para campos de input e selectbox */
     .stTextInput > div > div > input:focus,
     .stNumberInput > div > div > input:focus,
     .stDateInput > div > div > input:focus,
     .stSelectbox > div > div > div > div:focus {
         border-color: #28a745; /* Borda verde no foco */
-        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25); /* Sombra de foco verde */
+        box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2); /* Sombra de foco verde suave */
         outline: none; /* Remove outline padrão do navegador */
     }
 
-    /* Estilo para o campo de pesquisa */
+    /* Estilo específico para o campo de pesquisa (mais arredondado) */
     .stTextInput[data-testid="stTextInput"] > div > div > input {
         border-radius: 20px; /* Mais arredondado para pesquisa */
         padding-left: 20px; /* Espaçamento para ícone de pesquisa (se houver) */
     }
 
-    /* Estilo para botões gerais */
+    /* Estilo para botões gerais (ex: "Adicionar Lançamento") */
     .stButton > button {
         border-radius: 8px;
-        border: 1px solid #28a745; /* Borda verde */
-        background-color: #28a745; /* Fundo verde */
+        border: none; /* Remove a borda padrão */
+        background-color: #28a745; /* Fundo verde principal */
         color: white;
         padding: 10px 20px;
         font-weight: bold;
         transition: all 0.2s ease-in-out; /* Transição suave */
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15); /* Sombra mais pronunciada */
     }
     .stButton > button:hover {
         background-color: #218838; /* Verde mais escuro no hover */
-        border-color: #218838;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Sombra maior no hover */
     }
     .stButton > button:focus {
-        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.5);
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.5); /* Sombra de foco verde */
         outline: none;
     }
 
-    /* Estilo para botões de data (Essa semana, Esse mês, Hoje, Limpar) */
-    .stButton > button[data-testid*="stButton-secondary"] { /* Ajuste para botões secundários */
-        background-color: #f9f9f9;
-        color: #333;
-        border: 1px solid #ddd;
-        box-shadow: none;
+    /* Estilo para botões secundários (ex: "Essa semana", "Esse mês", "Hoje", "Limpar") */
+    .stButton > button[data-testid*="stButton-secondary"] {
+        background-color: #e9ecef; /* Cinza claro */
+        color: #495057; /* Texto cinza escuro */
+        border: 1px solid #ced4da; /* Borda cinza */
+        box-shadow: none; /* Remove sombra */
     }
     .stButton > button[data-testid*="stButton-secondary"]:hover {
-        background-color: #e9e9e9;
-        border-color: #ccc;
+        background-color: #dee2e6; /* Cinza um pouco mais escuro no hover */
+        border-color: #adb5bd;
         color: #333;
     }
 
