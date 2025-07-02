@@ -8,8 +8,8 @@ import numpy as np
 
 # --- Configuração da Página ---
 st.set_page_config(
-    layout="wide", 
-    page_title="Granazen Finance", 
+    layout="wide",
+    page_title="Granazen Finance",
     page_icon="💰",
     initial_sidebar_state="collapsed"
 )
@@ -267,26 +267,28 @@ apply_custom_css()
 def format_currency(value):
     return f"R$ {value:,.2f}"
 
-def calculate_metrics(df_filtered, start_date, end_date, prev_month_start, prev_month_end):
-    total_receitas = df_filtered[df_filtered['Tipo'] == 'Receita']['Valor'].sum() if not df_filtered.empty else 0
-    total_despesas = df_filtered[df_filtered['Tipo'] == 'Despesa']['Valor'].sum() if not df_filtered.empty else 0
+def calculate_metrics(df_filtered_current_period, start_date, end_date, prev_month_start, prev_month_end):
+    # Métricas para o período atual
+    total_receitas = df_filtered_current_period[df_filtered_current_period['Tipo'] == 'Receita']['Valor'].sum() if not df_filtered_current_period.empty else 0
+    total_despesas = df_filtered_current_period[df_filtered_current_period['Tipo'] == 'Despesa']['Valor'].sum() if not df_filtered_current_period.empty else 0
     saldo_atual = total_receitas - total_despesas
 
     prev_month_receitas = 0
     prev_month_despesas = 0
     
-    if not st.session_state.df.empty and 'Data' in st.session_state.df.columns:
-        df_prev = st.session_state.df.copy()
-        df_prev['Data'] = pd.to_datetime(df_prev['Data'], errors='coerce')
-        df_prev = df_prev.dropna(subset=['Data'])
+    if not st.session_state.df.empty:
+        # Garante que a coluna 'Data' do st.session_state.df seja datetime para o cálculo do mês anterior
+        df_full_data_copy = st.session_state.df.copy()
+        df_full_data_copy['Data'] = pd.to_datetime(df_full_data_copy['Data'], errors='coerce')
+        df_full_data_copy = df_full_data_copy.dropna(subset=['Data'])
         
-        if not df_prev.empty:
-            df_prev_month = df_prev[
-                (df_prev['Data'].dt.date >= prev_month_start) & 
-                (df_prev['Data'].dt.date <= prev_month_end)
+        if not df_full_data_copy.empty:
+            df_prev_month_data = df_full_data_copy[
+                (df_full_data_copy['Data'].dt.date >= prev_month_start) & 
+                (df_full_data_copy['Data'].dt.date <= prev_month_end)
             ]
-            prev_month_receitas = df_prev_month[df_prev_month['Tipo'] == 'Receita']['Valor'].sum() if not df_prev_month.empty else 0
-            prev_month_despesas = df_prev_month[df_prev_month['Tipo'] == 'Despesa']['Valor'].sum() if not df_prev_month.empty else 0
+            prev_month_receitas = df_prev_month_data[df_prev_month_data['Tipo'] == 'Receita']['Valor'].sum() if not df_prev_month_data.empty else 0
+            prev_month_despesas = df_prev_month_data[df_prev_month_data['Tipo'] == 'Despesa']['Valor'].sum() if not df_prev_month_data.empty else 0
 
     prev_month_saldo = prev_month_receitas - prev_month_despesas
     return total_receitas, total_despesas, saldo_atual, prev_month_saldo
@@ -296,6 +298,11 @@ def create_monthly_flow_chart(df):
     df_monthly['Mês'] = df_monthly['Data'].dt.to_period('M').astype(str)
     monthly_summary = df_monthly.groupby(['Mês', 'Tipo'])['Valor'].sum().unstack().fillna(0)
     
+    # Ordena os meses para garantir a sequência correta no gráfico
+    monthly_summary.index = pd.PeriodIndex(monthly_summary.index, freq='M')
+    monthly_summary = monthly_summary.sort_index()
+    monthly_summary.index = monthly_summary.index.astype(str) # Converte de volta para string para Plotly
+
     fig = go.Figure()
     
     fig.add_trace(go.Bar(
@@ -432,8 +439,8 @@ if 'df' not in st.session_state:
             datetime(2024, 3, 25), datetime(2024, 4, 5), datetime(2024, 4, 15)
         ],
         'Descrição': [
-            'Salário', 'Aluguel', 'Supermercado', 
-            'Freelance', 'Transporte', 'Restaurante', 
+            'Salário', 'Aluguel', 'Supermercado',
+            'Freelance', 'Transporte', 'Restaurante',
             'Bônus', 'Conta de Luz', 'Internet',
             'Presente', 'Salário', 'Academia'
         ],
@@ -462,7 +469,7 @@ if 'df' not in st.session_state:
 # --- Header ---
 col1, col2 = st.columns([1, 3])
 with col1:
-    st.image("https://via.placeholder.com/150x50?text=Granazen", width=150)
+    st.image("https://placehold.co/150x50/4e73df/ffffff?text=Granazen", width=150) # Placeholder com cor primária
 with col2:
     st.title("Dashboard Financeiro")
 
@@ -475,8 +482,8 @@ tab1, tab2 = st.tabs(["📤 Carregar CSV", "✏️ Inserir Manualmente"])
 with tab1:
     st.subheader("Carregar Extrato Bancário")
     uploaded_file = st.file_uploader(
-        "Selecione seu arquivo CSV", 
-        type="csv", 
+        "Selecione seu arquivo CSV",
+        type="csv",
         help="O arquivo deve conter colunas: Data, Descrição, Valor, Tipo, Categoria",
         key="file_uploader"
     )
@@ -487,12 +494,14 @@ with tab1:
             required_cols = ['Data', 'Descrição', 'Valor', 'Tipo', 'Categoria']
             if all(col in temp_df.columns for col in required_cols):
                 st.session_state.df = temp_df
+                # Garante que a coluna 'Data' seja datetime após o upload
                 st.session_state.df['Data'] = pd.to_datetime(st.session_state.df['Data'], errors='coerce')
                 st.session_state.df = st.session_state.df.dropna(subset=['Data'])
                 st.success("Dados carregados com sucesso!")
                 
                 with st.expander("Visualizar dados carregados"):
                     st.dataframe(st.session_state.df.head(), use_container_width=True)
+                st.rerun() # Recarrega para aplicar os novos dados
             else:
                 missing_cols = [col for col in required_cols if col not in temp_df.columns]
                 st.error(f"O arquivo não contém todas as colunas necessárias. Faltando: {', '.join(missing_cols)}")
@@ -511,13 +520,13 @@ with tab2:
         with cols[1]:
             valor = st.number_input("Valor (R$)*", min_value=0.01, format="%.2f", step=0.01)
             categoria = st.selectbox(
-                "Categoria*", 
-                ["Moradia", "Alimentação", "Transporte", "Lazer", "Saúde", "Educação", "Outros"]
+                "Categoria*",
+                ["Moradia", "Alimentação", "Transporte", "Lazer", "Saúde", "Educação", "Outros", "Salário", "Freelance", "Bônus"] # Adicionado categorias de exemplo
             )
         
         with cols[2]:
             descricao = st.text_input("Descrição*")
-            st.markdown("<div style='height: 27px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 27px;'></div>", unsafe_allow_html=True) # Espaçamento para alinhar o botão
             submitted = st.form_submit_button("💾 Salvar Transação", type="primary")
         
         if submitted:
@@ -530,7 +539,10 @@ with tab2:
                     'Categoria': categoria
                 }])
                 st.session_state.df = pd.concat([st.session_state.df, new_entry], ignore_index=True)
+                # Garante que a coluna 'Data' seja datetime após adicionar nova entrada
+                st.session_state.df['Data'] = pd.to_datetime(st.session_state.df['Data'], errors='coerce')
                 st.success("Transação adicionada com sucesso!")
+                st.rerun()
             else:
                 st.warning("Preencha todos os campos obrigatórios (*)")
 
@@ -547,17 +559,24 @@ with col1:
     )
 
 with col2:
+    # Define valores padrão para o date_input para evitar erro de valor vazio
+    default_start_date = datetime.now().date().replace(day=1)
+    default_end_date = (datetime.now().date().replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+
     if period == "Personalizado":
         date_range = st.date_input(
             "Selecione o período",
-            [],
+            value=[default_start_date, default_end_date], # Define um valor padrão
             label_visibility="collapsed",
             key="date_range_picker"
         )
         if len(date_range) == 2:
             start_date, end_date = date_range
-        else:
-            start_date = end_date = datetime.now().date()
+        elif len(date_range) == 1: # Se apenas uma data for selecionada, considera como período de um dia
+            start_date = end_date = date_range[0]
+        else: # Se nada for selecionado, usa o padrão
+            start_date = default_start_date
+            end_date = default_end_date
     else:
         today = datetime.now().date()
         if period == "Hoje":
@@ -572,30 +591,48 @@ with col2:
 with col3:
     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
     if st.button("🔄 Limpar Filtros", key="clear_filters"):
+        # Reseta para o período "Este Mês" ao limpar
         period = "Este Mês"
         start_date = datetime.now().date().replace(day=1)
         end_date = (datetime.now().date().replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        st.session_state.period_radio = "Este Mês" # Atualiza o estado do radio button
         st.rerun()
 
 # Filtra os dados
-df_filtered = st.session_state.df[
-    (st.session_state.df['Data'].dt.date >= start_date) & 
-    (st.session_state.df['Data'].dt.date <= end_date)
-].copy()
+df_filtered = pd.DataFrame() # Inicializa como DataFrame vazio
+if not st.session_state.df.empty:
+    # Garante que a coluna 'Data' seja datetime antes de filtrar
+    df_temp = st.session_state.df.copy()
+    df_temp['Data'] = pd.to_datetime(df_temp['Data'], errors='coerce')
+    df_temp = df_temp.dropna(subset=['Data']) # Remove linhas com datas inválidas
+    
+    df_filtered = df_temp[
+        (df_temp['Data'].dt.date >= start_date) & 
+        (df_temp['Data'].dt.date <= end_date)
+    ].copy()
+
 
 # --- Cards de Métricas ---
 st.header("📊 Visão Geral")
 
 if not df_filtered.empty:
+    # Calcula o período do mês anterior para a métrica de variação
+    # O mês anterior é calculado em relação ao início do 'start_date' do filtro atual.
+    # Ex: se o filtro atual é Fev 2024, o mês anterior é Jan 2024.
+    first_day_current_filter_month = start_date.replace(day=1)
+    last_day_prev_filter_month = first_day_current_filter_month - timedelta(days=1)
+    first_day_prev_filter_month = last_day_prev_filter_month.replace(day=1)
+
     total_receitas, total_despesas, saldo_atual, prev_month_saldo = calculate_metrics(
-        df_filtered, start_date, end_date, 
-        (start_date - timedelta(days=30)), start_date - timedelta(days=1))
+        df_filtered, start_date, end_date,
+        first_day_prev_filter_month, last_day_prev_filter_month
+    )
     
     # Calcula variação em relação ao mês anterior
     if prev_month_saldo != 0:
         saldo_variation = ((saldo_atual - prev_month_saldo) / abs(prev_month_saldo)) * 100
     else:
-        saldo_variation = 0
+        saldo_variation = 0 # Ou np.nan se preferir não mostrar %
     
     cols = st.columns(4)
     with cols[0]:
@@ -645,6 +682,9 @@ if not df_filtered.empty:
         </div>
         """, unsafe_allow_html=True)
 
+else:
+    st.info("Nenhuma transação encontrada para o período selecionado. Carregue dados ou adicione transações para ver as métricas.")
+
 # --- Gráficos Principais ---
 st.header("📈 Análise Detalhada")
 
@@ -660,7 +700,7 @@ if not df_filtered.empty:
         if fig2:
             st.plotly_chart(fig2, use_container_width=True)
         else:
-            st.warning("Nenhuma despesa encontrada no período selecionado.")
+            st.warning("Nenhuma despesa encontrada no período selecionado para o gráfico de pizza.")
     
     with tab3:
         fig3 = create_balance_chart(df_filtered)
