@@ -71,11 +71,9 @@ def apply_custom_css():
         border: 1px solid #e0e0e0; /* Borda sutil */
     }
 
-    /* Estilo para campos de input (texto, número, data) e selectbox */
-    .stTextInput > div > div > input,
-    .stNumberInput > div > div > input,
-    .stDateInput > div > div > input,
-    .stSelectbox > div > div > div > div {
+    /* Estilo para campos de input (texto, número) */
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stNumberInput"] input {
         border-radius: 8px; /* Cantos arredondados */
         border: 1px solid #d0d0d0; /* Borda cinza suave */
         padding: 10px 12px;
@@ -83,25 +81,51 @@ def apply_custom_css():
         box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03); /* Sombra interna mais sutil */
         transition: all 0.2s ease-in-out; /* Transição suave para o foco */
     }
-
-    /* Estilo de foco para campos de input e selectbox */
-    .stTextInput > div > div > input:focus,
-    .stNumberInput > div > div > input:focus,
-    .stDateInput > div > div > input:focus,
-    .stSelectbox > div > div > div > div:focus {
+    div[data-testid="stTextInput"] input:focus,
+    div[data-testid="stNumberInput"] input:focus {
         border-color: #28a745; /* Borda verde no foco */
         box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.15); /* Sombra de foco verde mais suave */
         outline: none; /* Remove outline padrão do navegador */
     }
 
+    /* Estilo para st.date_input */
+    div[data-testid="stDateInput"] .stDateInput input {
+        border-radius: 8px;
+        border: 1px solid #d0d0d0;
+        padding: 10px 12px;
+        background-color: #ffffff;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+        transition: all 0.2s ease-in-out;
+    }
+    div[data-testid="stDateInput"] .stDateInput input:focus {
+        border-color: #28a745;
+        box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.15);
+        outline: none;
+    }
+
+    /* Estilo para st.selectbox */
+    div[data-testid="stSelectbox"] button {
+        border-radius: 8px;
+        border: 1px solid #d0d0d0;
+        padding: 10px 12px;
+        background-color: #ffffff;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+        transition: all 0.2s ease-in-out;
+    }
+    div[data-testid="stSelectbox"] button:focus {
+        border-color: #28a745;
+        box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.15);
+        outline: none;
+    }
+
     /* Estilo específico para o campo de pesquisa (mais arredondado) */
-    .stTextInput[data-testid="stTextInput"] > div > div > input {
+    div[data-testid="stTextInput"] input[type="text"][placeholder*="Pesquisar"] {
         border-radius: 20px; /* Mais arredondado para pesquisa */
         padding-left: 20px; /* Espaçamento para ícone de pesquisa (se houver) */
     }
 
     /* Estilo para botões gerais (ex: "Adicionar Lançamento") */
-    .stButton > button {
+    div[data-testid="stFormSubmitButton"] button {
         border-radius: 8px;
         border: none; /* Remove a borda padrão */
         background-color: #28a745; /* Fundo verde principal */
@@ -111,32 +135,34 @@ def apply_custom_css():
         transition: all 0.2s ease-in-out; /* Transição suave */
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Sombra mais sutil */
     }
-    .stButton > button:hover {
+    div[data-testid="stFormSubmitButton"] button:hover {
         background-color: #218838; /* Verde mais escuro no hover */
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Sombra maior no hover */
     }
-    .stButton > button:focus {
+    div[data-testid="stFormSubmitButton"] button:focus {
         box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.4); /* Sombra de foco verde */
         outline: none;
     }
 
     /* Estilo para botões secundários (ex: "Essa semana", "Esse mês", "Hoje", "Limpar") */
-    .stButton > button[data-testid*="stButton-secondary"] {
+    div[data-testid^="stButton"] button { /* Seleciona todos os botões e depois refina */
         background-color: #f8f9fa; /* Cinza muito claro */
         color: #495057; /* Texto cinza escuro */
         border: 1px solid #e0e0e0; /* Borda cinza */
         box-shadow: none; /* Remove sombra */
         padding: 8px 15px; /* Padding menor */
         font-weight: normal;
+        border-radius: 8px; /* Cantos arredondados */
+        transition: all 0.2s ease-in-out;
     }
-    .stButton > button[data-testid*="stButton-secondary"]:hover {
+    div[data-testid^="stButton"] button:hover {
         background-color: #e2e6ea; /* Cinza um pouco mais escuro no hover */
         border-color: #d0d0d0;
         color: #333;
     }
 
     /* Estilo para as abas (tabs) */
-    .stTabs [data-testid="stTab"] {
+    div[data-testid="stTab"] {
         background-color: #f0f2f6;
         border-radius: 8px 8px 0 0;
         padding: 10px 15px;
@@ -145,18 +171,18 @@ def apply_custom_css():
         color: #666;
         transition: all 0.2s ease-in-out;
     }
-    .stTabs [data-testid="stTab"]:hover {
+    div[data-testid="stTab"]:hover {
         background-color: #e0e2e6;
     }
-    .stTabs [data-testid="stTab"][aria-selected="true"] {
+    div[data-testid="stTab"][aria-selected="true"] {
         background-color: white;
         border-bottom: 3px solid #28a745; /* Linha verde na aba selecionada */
         color: #28a745;
     }
-    .stTabs [data-testid="stTabs"] {
+    div[data-testid="stTabs"] {
         background-color: transparent; /* Remove fundo da barra de abas */
     }
-    .stTabs [data-testid="stTabContent"] {
+    div[data-testid="stTabContent"] {
         background-color: white; /* Fundo do conteúdo da aba */
         padding: 20px;
         border-radius: 0 0 10px 10px;
