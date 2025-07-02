@@ -15,10 +15,12 @@ def apply_custom_css():
     /* Estilo geral */
     .stApp {
         background-color: #f0f2f6; /* Cor de fundo clara */
+        color: #333; /* Cor do texto padrão */
+        font-family: "Inter", sans-serif; /* Fonte Inter */
     }
 
-    /* Header/Navegação */
-    .header-container {
+    /* Header/Navegação (REMOVIDO) */
+    /* .header-container {
         background-color: #28a745; /* Verde do Granazen */
         padding: 10px 20px;
         border-radius: 10px;
@@ -33,10 +35,10 @@ def apply_custom_css():
         font-weight: bold;
         padding: 5px 10px;
         cursor: pointer;
+        border-radius: 5px; /* Arredondar itens do cabeçalho */
     }
     .header-item:hover {
         background-color: #218838;
-        border-radius: 5px;
     }
     .header-logo {
         font-size: 24px;
@@ -46,7 +48,7 @@ def apply_custom_css():
     .header-right {
         display: flex;
         gap: 15px;
-    }
+    } */
 
     /* Cards de Métricas */
     .metric-card {
@@ -82,7 +84,7 @@ def apply_custom_css():
         color: #888;
     }
 
-    /* Seções de Conteúdo (Tabela, Gráficos) */
+    /* Seções de Conteúdo (Tabela, Gráficos, Formulários) */
     .content-section {
         background-color: white;
         padding: 20px;
@@ -91,26 +93,102 @@ def apply_custom_css():
         margin-bottom: 20px;
     }
 
-    /* Ajustes para botões de data */
+    /* Estilo para campos de input (texto, número, data) e selectbox */
+    .stTextInput > div > div > input,
+    .stNumberInput > div > div > input,
+    .stDateInput > div > div > input,
+    .stSelectbox > div > div > div > div {
+        border-radius: 8px;
+        border: 1px solid #e0e0e0; /* Borda suave */
+        padding: 10px 12px;
+        background-color: #fcfcfc; /* Fundo levemente diferente */
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05); /* Sombra interna sutil */
+    }
+
+    .stTextInput > div > div > input:focus,
+    .stNumberInput > div > div > input:focus,
+    .stDateInput > div > div > input:focus,
+    .stSelectbox > div > div > div > div:focus {
+        border-color: #28a745; /* Borda verde no foco */
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25); /* Sombra de foco verde */
+        outline: none; /* Remove outline padrão do navegador */
+    }
+
+    /* Estilo para o campo de pesquisa */
+    .stTextInput[data-testid="stTextInput"] > div > div > input {
+        border-radius: 20px; /* Mais arredondado para pesquisa */
+        padding-left: 20px; /* Espaçamento para ícone de pesquisa (se houver) */
+    }
+
+    /* Estilo para botões gerais */
     .stButton > button {
         border-radius: 8px;
-        border: 1px solid #ddd;
-        background-color: #f9f9f9;
-        color: #333;
-        padding: 8px 15px;
+        border: 1px solid #28a745; /* Borda verde */
+        background-color: #28a745; /* Fundo verde */
+        color: white;
+        padding: 10px 20px;
+        font-weight: bold;
+        transition: all 0.2s ease-in-out; /* Transição suave */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     .stButton > button:hover {
-        border-color: #28a745;
-        color: #28a745;
+        background-color: #218838; /* Verde mais escuro no hover */
+        border-color: #218838;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
     .stButton > button:focus {
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.5);
+        outline: none;
+    }
+
+    /* Estilo para botões de data (Essa semana, Esse mês, Hoje, Limpar) */
+    .stButton > button[data-testid*="stButton-secondary"] { /* Ajuste para botões secundários */
+        background-color: #f9f9f9;
+        color: #333;
+        border: 1px solid #ddd;
         box-shadow: none;
     }
-    /* Estilo para o botão "Esse mês" selecionado */
-    .stButton > button[data-testid="stButton-secondary"] { /* Ajuste se o Streamlit mudar o data-testid */
+    .stButton > button[data-testid*="stButton-secondary"]:hover {
+        background-color: #e9e9e9;
+        border-color: #ccc;
+        color: #333;
+    }
+    /* Estilo para o botão "Esse mês" selecionado, se o Streamlit mantiver um estado */
+    /* Isso é mais complexo com CSS puro, mas podemos simular um destaque */
+    /* Streamlit não adiciona uma classe 'selected' automaticamente para botões */
+    /* Apenas para demonstração, o estilo abaixo não será ativado por clique */
+    /* .stButton > button[data-testid="stButton-secondary"][aria-pressed="true"] {
         background-color: #28a745;
         color: white;
         border-color: #28a745;
+    } */
+
+    /* Estilo para as abas (tabs) */
+    .stTabs [data-testid="stTab"] {
+        background-color: #f0f2f6;
+        border-radius: 8px 8px 0 0;
+        padding: 10px 15px;
+        margin-right: 5px;
+        font-weight: bold;
+        color: #666;
+        transition: all 0.2s ease-in-out;
+    }
+    .stTabs [data-testid="stTab"]:hover {
+        background-color: #e0e2e6;
+    }
+    .stTabs [data-testid="stTab"][aria-selected="true"] {
+        background-color: white;
+        border-bottom: 3px solid #28a745; /* Linha verde na aba selecionada */
+        color: #28a745;
+    }
+    .stTabs [data-testid="stTabs"] {
+        background-color: transparent; /* Remove fundo da barra de abas */
+    }
+    .stTabs [data-testid="stTabContent"] {
+        background-color: white; /* Fundo do conteúdo da aba */
+        padding: 20px;
+        border-radius: 0 0 10px 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -135,25 +213,25 @@ def calculate_metrics(df_filtered, start_date, end_date, prev_month_start, prev_
 
     return total_receitas, total_despesas, saldo_atual, prev_month_saldo
 
-# --- Header/Navegação (Simulação) ---
-st.markdown("""
-<div class="header-container">
-    <div class="header-left">
-        <span class="header-logo">GranaZen</span>
-    </div>
-    <div class="header-right">
-        <span class="header-item">Visão geral</span>
-        <span class="header-item">Planeje sua grana</span>
-        <span class="header-item">Minhas Categorias</span>
-        <span class="header-item">Configurações</span>
-        <span class="header-item">Aparência</span>
-        <span class="header-item">Sair</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+# --- Header/Navegação (REMOVIDO) ---
+# st.markdown("""
+# <div class="header-container">
+#     <div class="header-left">
+#         <span class="header-logo">GranaZen</span>
+#     </div>
+#     <div class="header-right">
+#         <span class="header-item">Visão geral</span>
+#         <span class="header-item">Planeje sua grana</span>
+#         <span class="header-item">Minhas Categorias</span>
+#         <span class="header-item">Configurações</span>
+#         <span class="header-item">Aparência</span>
+#         <span class="header-item">Sair</span>
+#     </div>
+# </div>
+# """, unsafe_allow_html=True)
 
 # --- Título Principal e Subtítulo ---
-st.markdown("## 💰 Dashboard de Análise Financeira")
+st.title("💰 Dashboard de Análise Financeira")
 st.markdown("Este aplicativo simula a perspectiva analítica do Granazen, permitindo que você carregue seus dados financeiros ou insira novos lançamentos manualmente.")
 st.markdown("Para uma melhor experiência, seu arquivo CSV deve conter as seguintes colunas (nomes exatos): `Data`, `Descrição`, `Valor`, `Tipo` (com 'Receita' ou 'Despesa'), e `Categoria`.")
 
